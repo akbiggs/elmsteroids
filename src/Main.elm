@@ -13,7 +13,7 @@ import Bounds exposing (..)
 import Stars exposing (Star)
 import Player exposing (Player)
 import Asteroid
-import Bullets exposing (Bullet)
+import Bullet
 import SegmentParticles exposing (SegmentParticle)
 import KeyStates exposing (KeyStates)
 import Ship
@@ -50,7 +50,7 @@ type alias PreGameState =
   , lives : Int
   , stars : List Star
   , asteroids : List Asteroid.Model
-  , bullets : List Bullet
+  , bullets : List Bullet.Model
   , segmentParticles : List SegmentParticle
   , randomSeed : Seed
   , stateTime : Float
@@ -66,7 +66,7 @@ type alias GameState =
   , stars : List Star
   , player : Player
   , asteroids : List Asteroid.Model
-  , bullets : List Bullet
+  , bullets : List Bullet.Model
   , segmentParticles : List SegmentParticle
   , keys : KeyStates
   , randomSeed : Seed
@@ -83,7 +83,7 @@ type alias PostGameState =
   , lives : Int
   , stars : List Star
   , player : Player
-  , bullets : List Bullet
+  , bullets : List Bullet.Model
   , segmentParticles : List SegmentParticle
   , keys : KeyStates
   , randomSeed : Seed
@@ -98,7 +98,7 @@ type alias GameOverState =
   , score : Int
   , stars : List Star
   , asteroids : List Asteroid.Model
-  , bullets : List Bullet
+  , bullets : List Bullet.Model
   , segmentParticles : List SegmentParticle
   , randomSeed : Seed
   , stateTime : Float
@@ -184,7 +184,7 @@ tickTitle timeDelta titleState =
     , stateTime = titleState.stateTime + timeDelta
   }
 
-initPreGame : Int -> Int -> Int -> List Star -> List Asteroid.Model -> List Bullet -> List SegmentParticle -> Seed -> PreGameState
+initPreGame : Int -> Int -> Int -> List Star -> List Asteroid.Model -> List Bullet.Model -> List SegmentParticle -> Seed -> PreGameState
 initPreGame sector score lives stars asteroids bullets segmentParticles randomSeed =
   { sector = sector
   , score = score
@@ -202,7 +202,7 @@ tickPreGame timeDelta preGameState =
   let
     stars = Stars.tick timeDelta preGameState.stars
     asteroids = Asteroid.tick timeDelta preGameState.asteroids
-    bullets = Bullets.tick timeDelta preGameState.bullets
+    bullets = Bullet.tick timeDelta preGameState.bullets
 
     ((asteroids', bullets', segmentParticles, _, _), randomSeed) =
       collide
@@ -235,7 +235,7 @@ tickPreGame timeDelta preGameState =
           , stateTime = preGameState.stateTime + timeDelta
         }
 
-initGame : Int -> Int -> Int -> List Star -> List Asteroid.Model -> List Bullet -> List SegmentParticle -> Seed -> GameState
+initGame : Int -> Int -> Int -> List Star -> List Asteroid.Model -> List Bullet.Model -> List SegmentParticle -> Seed -> GameState
 initGame sector score lives stars asteroids bullets segmentParticles randomSeed =
   { sector = sector
   , score = score
@@ -267,10 +267,10 @@ tickGame timeDelta gameState =
     stars = Stars.tick timeDelta gameState.stars
     player = Player.tick timeDelta gameState.keys gameState.player
     asteroids = Asteroid.tick timeDelta gameState.asteroids
-    bullets = Bullets.tick timeDelta gameState.bullets
+    bullets = Bullet.tick timeDelta gameState.bullets
     (bullets', fireTime) =
       if gameState.keys.space && gameState.fireTime >= 0 then
-        (Bullets.fire gameState.player bullets, -0.3)
+        (Bullet.fire gameState.player bullets, -0.3)
       else (bullets, gameState.fireTime + timeDelta)
 
     ((asteroids', bullets'', segmentParticles, score, hitPlayer), randomSeed) =
@@ -334,7 +334,7 @@ tickGame timeDelta gameState =
               , stateTime = gameState.stateTime + timeDelta
             }
 
-initPostGame : Int -> Int -> Int -> List Star -> Player -> List Bullet -> List SegmentParticle -> Seed -> PostGameState
+initPostGame : Int -> Int -> Int -> List Star -> Player -> List Bullet.Model -> List SegmentParticle -> Seed -> PostGameState
 initPostGame sector score lives stars player bullets segmentParticles randomSeed =
   { sector = sector
   , score = score
@@ -359,7 +359,7 @@ tickPostGame timeDelta postGameState =
   let
     stars = Stars.tick timeDelta postGameState.stars
     player = Player.tick timeDelta postGameState.keys postGameState.player
-    bullets = Bullets.tick timeDelta postGameState.bullets
+    bullets = Bullet.tick timeDelta postGameState.bullets
     segmentParticles = SegmentParticles.tick timeDelta postGameState.segmentParticles
   in
     if postGameState.stateTime >= postGameLength then
@@ -385,7 +385,7 @@ tickPostGame timeDelta postGameState =
           , stateTime = postGameState.stateTime + timeDelta
         }
 
-initGameOver : Int -> Int -> List Star -> List Asteroid.Model -> List Bullet -> List SegmentParticle -> Seed -> GameOverState
+initGameOver : Int -> Int -> List Star -> List Asteroid.Model -> List Bullet.Model -> List SegmentParticle -> Seed -> GameOverState
 initGameOver sector score stars asteroids bullets segmentParticles randomSeed =
   { sector = sector
   , score = score
@@ -402,7 +402,7 @@ tickGameOver timeDelta gameOverState =
   let
     stars = Stars.tick timeDelta gameOverState.stars
     asteroids = Asteroid.tick timeDelta gameOverState.asteroids
-    bullets = Bullets.tick timeDelta gameOverState.bullets
+    bullets = Bullet.tick timeDelta gameOverState.bullets
 
     ((asteroids', bullets', segmentParticles, _, _), randomSeed) =
       collide
@@ -464,7 +464,7 @@ view model =
               , Asteroid.draw preGameState.asteroids
               -- Seems there are rendering bugs when drawing the ship with alpha = 0
               , Ship.draw (0, 0) ((animAmt' ^ 3) * 8) |> scale (1 + (animAmt' ^ 2) * 2) |> alpha (animAmt |> max 0.00001)
-              , Bullets.draw preGameState.bullets
+              , Bullet.draw preGameState.bullets
               , SegmentParticles.draw preGameState.segmentParticles
               , group
                   [ defaultText 26 ("warping to sector " ++ toString preGameState.sector) |> moveY 50
@@ -484,7 +484,7 @@ view model =
                   cos (gameState.stateTime * 50) * 0.4 + 0.6
                 else 1
              in Player.draw gameState.player |> alpha a
-            , Bullets.draw gameState.bullets
+            , Bullet.draw gameState.bullets
             , SegmentParticles.draw gameState.segmentParticles
             , Hud.draw gameState.sector gameState.score gameState.lives |> alpha (min gameState.stateTime 1)
             ]
@@ -493,7 +493,7 @@ view model =
           group
             [ Stars.draw postGameState.stars
             , Player.draw postGameState.player
-            , Bullets.draw postGameState.bullets
+            , Bullet.draw postGameState.bullets
             , SegmentParticles.draw postGameState.segmentParticles
             , group
                 [ defaultText 26 ("sector " ++ toString postGameState.sector ++ " cleared") |> moveY 50
@@ -506,7 +506,7 @@ view model =
           group
             [ Stars.draw gameOverState.stars
             , Asteroid.draw gameOverState.asteroids
-            , Bullets.draw gameOverState.bullets
+            , Bullet.draw gameOverState.bullets
             , SegmentParticles.draw gameOverState.segmentParticles
             , group
                 [ defaultText 36 "GAME OVER" |> moveY 30

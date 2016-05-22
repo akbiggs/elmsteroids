@@ -1,4 +1,4 @@
-module Bullets exposing (Bullet, fire, tick, draw)
+module Bullet exposing (Model, fire, tick, draw)
 
 import List exposing (..)
 import Collage exposing (Form, group, rect, filled, move, alpha)
@@ -7,13 +7,15 @@ import Vector exposing (..)
 import Ship
 import Player exposing (Player)
 
-type alias Bullet =
+-- MODEL
+
+type alias Model =
   { position : Vector
   , velocity : Vector
   , timeUntilDeath : Float
   }
 
-fire : Player -> List Bullet -> List Bullet
+fire : Player -> List Model -> List Model
 fire player bullets =
   { position = Ship.front player.position player.rotation
   , velocity =
@@ -22,16 +24,16 @@ fire player bullets =
   , timeUntilDeath = 3.0
   } :: bullets
 
-tick : Float -> List Bullet -> List Bullet
+tick : Float -> List Model -> List Model
 tick timeDelta = filterMap (moveBullet timeDelta >> killBullet timeDelta)
 
-moveBullet : Float -> Bullet -> Bullet
+moveBullet : Float -> Model -> Model
 moveBullet timeDelta bullet =
   { bullet | position =
       add bullet.position (mulS timeDelta bullet.velocity) |> wrap
   }
 
-killBullet : Float -> Bullet -> Maybe Bullet
+killBullet : Float -> Model -> Maybe Model
 killBullet timeDelta bullet =
   let timeUntilDeath = bullet.timeUntilDeath - timeDelta
   in
@@ -39,10 +41,10 @@ killBullet timeDelta bullet =
       Just { bullet | timeUntilDeath = timeUntilDeath }
     else Nothing
 
-draw : List Bullet -> Form
+draw : List Model -> Form
 draw = map drawBullet >> group
 
-drawBullet : Bullet -> Form
+drawBullet : Model -> Form
 drawBullet bullet =
   rect 2 2
   |> filled white

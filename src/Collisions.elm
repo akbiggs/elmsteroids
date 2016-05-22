@@ -7,11 +7,11 @@ import Segment exposing (..)
 import Triangle
 import Player exposing (Player)
 import Asteroid exposing (liesInside, split)
-import Bullets exposing (Bullet)
+import Bullet
 import SegmentParticles exposing (SegmentParticle, segmentParticles)
 import Ship
 
-collide : Maybe Player -> List Asteroid.Model -> List Bullet -> State Seed (List Asteroid.Model, List Bullet, List SegmentParticle, Int, Bool)
+collide : Maybe Player -> List Asteroid.Model -> List Bullet.Model -> State Seed (List Asteroid.Model, List Bullet.Model, List SegmentParticle, Int, Bool)
 collide player asteroids bullets =
   collideAsteroidsBullets asteroids bullets >>= \(asteroids', bullets', particles, score) ->
     case player of
@@ -20,12 +20,12 @@ collide player asteroids bullets =
              return (asteroids', bullets', particles ++ particles', score, hitPlayer)
       _ -> return (asteroids', bullets', particles, score, False)
 
-collideAsteroidsBullets : List Asteroid.Model -> List Bullet -> State Seed (List Asteroid.Model, List Bullet, List SegmentParticle, Int)
+collideAsteroidsBullets : List Asteroid.Model -> List Bullet.Model -> State Seed (List Asteroid.Model, List Bullet.Model, List SegmentParticle, Int)
 collideAsteroidsBullets asteroids bullets =
   collideAsteroidsBullets' asteroids bullets >>= \(asteroids, bullets', particles, score) ->
     return (concat asteroids, bullets', concat particles, score)
 
-collideAsteroidsBullets' : List Asteroid.Model -> List Bullet -> State Seed (List (List Asteroid.Model), List Bullet, List (List SegmentParticle), Int)
+collideAsteroidsBullets' : List Asteroid.Model -> List Bullet.Model -> State Seed (List (List Asteroid.Model), List Bullet.Model, List (List SegmentParticle), Int)
 collideAsteroidsBullets' asteroids bullets =
   case asteroids of
     [] -> return ([], bullets, [], 0)
@@ -34,7 +34,7 @@ collideAsteroidsBullets' asteroids bullets =
         collideAsteroidsBullets' xs bullets' >>= \(xs', bullets'', particles', score') ->
           return (asteroids' :: xs', bullets'', particles :: particles', score + score')
 
-collideAsteroidBullet : Asteroid.Model -> List Bullet -> State Seed (List Asteroid.Model, List Bullet, List SegmentParticle, Int)
+collideAsteroidBullet : Asteroid.Model -> List Bullet.Model -> State Seed (List Asteroid.Model, List Bullet.Model, List SegmentParticle, Int)
 collideAsteroidBullet asteroid bullets =
   case bullets of
     [] -> return ([asteroid], [], [], 0)
