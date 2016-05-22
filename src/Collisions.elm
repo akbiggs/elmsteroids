@@ -5,13 +5,13 @@ import Random exposing (Seed)
 import State exposing (..)
 import Segment exposing (..)
 import Triangle
-import Player exposing (Player)
+import Player
 import Asteroid exposing (liesInside, split)
 import Bullet
 import SegmentParticles exposing (SegmentParticle, segmentParticles)
 import Ship
 
-collide : Maybe Player -> List Asteroid.Model -> List Bullet.Model -> State Seed (List Asteroid.Model, List Bullet.Model, List SegmentParticle, Int, Bool)
+collide : Maybe Player.Model -> List Asteroid.Model -> List Bullet.Model -> State Seed (List Asteroid.Model, List Bullet.Model, List SegmentParticle, Int, Bool)
 collide player asteroids bullets =
   collideAsteroidsBullets asteroids bullets >>= \(asteroids', bullets', particles, score) ->
     case player of
@@ -46,7 +46,7 @@ collideAsteroidBullet asteroid bullets =
         collideAsteroidBullet asteroid xs >>= \(asteroids, xs', particles, score) ->
           return (asteroids, x :: xs', particles, score)
 
-collidePlayerAsteroids : Player -> List Asteroid.Model -> State Seed (Bool, List SegmentParticle)
+collidePlayerAsteroids : Player.Model -> List Asteroid.Model -> State Seed (Bool, List SegmentParticle)
 collidePlayerAsteroids player asteroids =
   case asteroids of
     [] -> return (False, [])
@@ -57,7 +57,7 @@ collidePlayerAsteroids player asteroids =
         else
           collidePlayerAsteroids player xs
 
-collidePlayerAsteroid : Player -> Asteroid.Model -> State Seed (Bool, List SegmentParticle)
+collidePlayerAsteroid : Player.Model -> Asteroid.Model -> State Seed (Bool, List SegmentParticle)
 collidePlayerAsteroid player asteroid =
   let
     shipTriangles = Ship.triangle player.position player.rotation |> Triangle.wrap

@@ -1,17 +1,17 @@
-module Player exposing (Player, tick, draw)
+module Player exposing (Model, tick, draw)
 
 import Collage exposing (Form)
 import Vector exposing (..)
 import Ship
 import KeyStates exposing (KeyStates)
 
-type alias Player =
+type alias Model =
   { position : Vector
   , velocity : Vector
   , rotation : Float
   }
 
-tick : Float -> KeyStates -> Player -> Player
+tick : Float -> KeyStates -> Model -> Model
 tick timeDelta keys player =
   let
     position =
@@ -40,5 +40,5 @@ tick timeDelta keys player =
       , rotation = rotation
     }
 
-draw : Player -> Form
+draw : Model -> Form
 draw player = Ship.draw player.position player.rotation

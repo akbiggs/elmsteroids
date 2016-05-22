@@ -11,7 +11,7 @@ import State exposing (..)
 import DefaultText exposing (..)
 import Bounds exposing (..)
 import Stars exposing (Star)
-import Player exposing (Player)
+import Player
 import Asteroid
 import Bullet
 import SegmentParticles exposing (SegmentParticle)
@@ -64,7 +64,7 @@ type alias GameState =
   , score : Int
   , lives : Int
   , stars : List Star
-  , player : Player
+  , player : Player.Model
   , asteroids : List Asteroid.Model
   , bullets : List Bullet.Model
   , segmentParticles : List SegmentParticle
@@ -82,7 +82,7 @@ type alias PostGameState =
   , score : Int
   , lives : Int
   , stars : List Star
-  , player : Player
+  , player : Player.Model
   , bullets : List Bullet.Model
   , segmentParticles : List SegmentParticle
   , keys : KeyStates
@@ -334,7 +334,7 @@ tickGame timeDelta gameState =
               , stateTime = gameState.stateTime + timeDelta
             }
 
-initPostGame : Int -> Int -> Int -> List Star -> Player -> List Bullet.Model -> List SegmentParticle -> Seed -> PostGameState
+initPostGame : Int -> Int -> Int -> List Star -> Player.Model -> List Bullet.Model -> List SegmentParticle -> Seed -> PostGameState
 initPostGame sector score lives stars player bullets segmentParticles randomSeed =
   { sector = sector
   , score = score

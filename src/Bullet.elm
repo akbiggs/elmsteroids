@@ -5,7 +5,7 @@ import Collage exposing (Form, group, rect, filled, move, alpha)
 import Color exposing (..)
 import Vector exposing (..)
 import Ship
-import Player exposing (Player)
+import Player
 
 -- MODEL
 
@@ -15,7 +15,7 @@ type alias Model =
   , timeUntilDeath : Float
   }
 
-fire : Player -> List Model -> List Model
+fire : Player.Model -> List Model -> List Model
 fire player bullets =
   { position = Ship.front player.position player.rotation
   , velocity =
