@@ -1,4 +1,4 @@
-module Asteroids exposing (Asteroid, liesInside, wrappedSegments, split, init, tick, draw)
+module Asteroid exposing (Model, liesInside, wrappedSegments, split, init, tick, draw)
 
 import List exposing (map, concatMap, any)
 import Collage exposing (Form, group, polygon, filled, outlined, defaultLine)
@@ -12,7 +12,9 @@ import Bounds exposing (..)
 import SegmentParticles exposing (SegmentParticle, segmentParticles)
 import Wrap
 
-type alias Asteroid =
+-- MODEL
+
+type alias Model =
   { position : Vector
   , velocity : Vector
   , rotation : Float
@@ -21,16 +23,16 @@ type alias Asteroid =
   , points : List Vector
   }
 
-absolutePoints : Asteroid -> List Vector
+absolutePoints : Model -> List Vector
 absolutePoints asteroid =
   asteroid.points
     |> map (rotate asteroid.rotation >> add asteroid.position)
 
-liesInside : Vector -> Asteroid -> Bool
+liesInside : Vector -> Model -> Bool
 liesInside point =
   triangles >> concatMap Triangle.wrap >> any (Triangle.liesInside point)
 
-triangles : Asteroid -> List Triangle
+triangles : Model -> List Triangle
 triangles asteroid =
   asteroid
     |> segments
@@ -41,7 +43,7 @@ triangles asteroid =
           , c = asteroid.position
           })
 
-segments : Asteroid -> List Segment
+segments : Model -> List Segment
 segments asteroid =
   let points = absolutePoints asteroid
   in
@@ -65,11 +67,11 @@ segments' firstPoint points =
           }
       in segment :: segments' firstPoint xs
 
-wrappedSegments : Asteroid -> List Segment
+wrappedSegments : Model -> List Segment
 wrappedSegments =
   segments >> concatMap Segment.wrap
 
-split : Asteroid -> State Seed (List Asteroid, List SegmentParticle)
+split : Model -> State Seed (List Model, List SegmentParticle)
 split asteroid =
   segmentParticles asteroid.velocity (segments asteroid) >>= \particles ->
     let size = asteroid.size - 1
@@ -79,7 +81,7 @@ split asteroid =
           return (asteroids, particles)
       else return ([], particles)
 
-split' : Vector -> Int -> Int -> State Seed (List Asteroid)
+split' : Vector -> Int -> Int -> State Seed (List Model)
 split' position size count =
   if count == 0 then return []
   else
@@ -87,10 +89,10 @@ split' position size count =
       <$> initAsteroid (Just position) size size
       <*> split' position size (count - 1)
 
-init : State Seed (List Asteroid)
+init : State Seed (List Model)
 init = step (int 2 3) >>= init' 4 5
 
-init' : Int -> Int -> Int -> State Seed (List Asteroid)
+init' : Int -> Int -> Int -> State Seed (List Model)
 init' minSize maxSize count =
   if count == 0 then return []
   else
@@ -98,7 +100,7 @@ init' minSize maxSize count =
       <$> initAsteroid Nothing minSize maxSize
       <*> init' minSize maxSize (count - 1)
 
-initAsteroid : Maybe Vector -> Int -> Int -> State Seed Asteroid
+initAsteroid : Maybe Vector -> Int -> Int -> State Seed Model
 initAsteroid spawnPos minSize maxSize =
   let
     angle = float 0 (pi * 2) |> step
@@ -163,25 +165,25 @@ initPoints' segAngleDelta minRadius maxRadius count =
           in
             ((::) point) <$> initPoints' segAngleDelta minRadius maxRadius (count - 1)
 
-tick : Float -> List Asteroid -> List Asteroid
+tick : Float -> List Model -> List Model
 tick timeDelta = map (moveAsteroid timeDelta >> rotateAsteroid timeDelta)
 
-moveAsteroid : Float -> Asteroid -> Asteroid
+moveAsteroid : Float -> Model -> Model
 moveAsteroid timeDelta asteroid =
   { asteroid | position =
       add asteroid.position (mulS timeDelta asteroid.velocity) |> wrap
   }
 
-rotateAsteroid : Float -> Asteroid -> Asteroid
+rotateAsteroid : Float -> Model -> Model
 rotateAsteroid timeDelta asteroid =
   { asteroid | rotation =
       asteroid.rotation + asteroid.rotationVelocity * timeDelta
   }
 
-draw : List Asteroid -> Form
+draw : List Model -> Form
 draw = map drawAsteroid >> group
 
-drawAsteroid : Asteroid -> Form
+drawAsteroid : Model -> Form
 drawAsteroid asteroid =
   asteroid
     |> absolutePoints
