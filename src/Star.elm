@@ -1,4 +1,4 @@
-module Stars exposing (Star, init, tick, draw)
+module Star exposing (Model, init, tick, draw)
 
 import List exposing (map)
 import Color exposing (..)
@@ -8,21 +8,21 @@ import State exposing (..)
 import Vector exposing (..)
 import Bounds exposing (..)
 
-type alias Star =
+type alias Model =
   { position : Vector
   , blinkPhase : Float
   , blinkFrequency : Float
   }
 
-init : State Seed (List Star)
+init : State Seed (List Model)
 init = step (int 80 100) >>= init'
 
-init' : Int -> State Seed (List Star)
+init' : Int -> State Seed (List Model)
 init' count =
   if count == 0 then return []
   else (::) <$> initStar <*> init' (count - 1)
 
-initStar : State Seed (Star)
+initStar : State Seed (Model)
 initStar =
   step (float left right) >>= \x ->
     step (float bottom top) >>= \y ->
@@ -34,17 +34,17 @@ initStar =
             , blinkFrequency = frequency
             }
 
-tick : Float -> List Star -> List Star
+tick : Float -> List Model -> List Model
 tick timeDelta = map (tickStar timeDelta)
 
-tickStar : Float -> Star -> Star
+tickStar : Float -> Model -> Model
 tickStar timeDelta star =
   { star | blinkPhase = star.blinkPhase + star.blinkFrequency * timeDelta }
 
-draw : List Star -> Form
+draw : List Model -> Form
 draw = map drawStar >> group
 
-drawStar : Star -> Form
+drawStar : Model -> Form
 drawStar star =
   let blink = sin(star.blinkPhase) * 0.4 + 0.6
   in rect 1 1 |> filled white |> move star.position |> alpha blink
