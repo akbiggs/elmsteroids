@@ -7,6 +7,7 @@ import Keyboard exposing (..)
 import Collage exposing (Form, collage, group, rect, filled, text, moveY, scale, alpha, scale)
 import Element
 import Color exposing (..)
+
 import State exposing (..)
 import DefaultText exposing (..)
 import Bounds exposing (..)
@@ -19,6 +20,7 @@ import KeyStates exposing (KeyStates)
 import Ship
 import Collisions exposing (..)
 import Hud
+import DrawUtilities exposing (..)
 
 main : Program Never
 main =
@@ -444,8 +446,8 @@ view model =
 
         Title titleState ->
           group
-            [ Star.draw titleState.stars
-            , Asteroid.draw titleState.asteroids
+            [ drawGroup Star.draw titleState.stars
+            , drawGroup Asteroid.draw titleState.asteroids
             , group
                 [ defaultText 40 "elmsteroids" |> moveY 50
                 , defaultText 16 "github.com/yupferris // 2016" |> moveY -30
@@ -460,12 +462,12 @@ view model =
             animAmt' = 1 - animAmt
           in
             group
-              [ Star.draw preGameState.stars
-              , Asteroid.draw preGameState.asteroids
+              [ drawGroup Star.draw preGameState.stars
+              , drawGroup Asteroid.draw preGameState.asteroids
               -- Seems there are rendering bugs when drawing the ship with alpha = 0
               , Ship.draw (0, 0) ((animAmt' ^ 3) * 8) |> scale (1 + (animAmt' ^ 2) * 2) |> alpha (animAmt |> max 0.00001)
-              , Bullet.draw preGameState.bullets
-              , SegmentParticle.draw preGameState.segmentParticles
+              , drawGroup Bullet.draw preGameState.bullets
+              , drawGroup SegmentParticle.draw preGameState.segmentParticles
               , group
                   [ defaultText 26 ("warping to sector " ++ toString preGameState.sector) |> moveY 50
                   , defaultText 18 ("score: " ++ toString preGameState.score ++ " // " ++ Hud.livesText preGameState.lives) |> moveY -30
@@ -476,16 +478,16 @@ view model =
 
         Game gameState ->
           group
-            [ Star.draw gameState.stars
-            , Asteroid.draw gameState.asteroids
+            [ drawGroup Star.draw gameState.stars
+            , drawGroup Asteroid.draw gameState.asteroids
             , let
                 a =
                 if gameState.stateTime < invinciblePeriod then
                   cos (gameState.stateTime * 50) * 0.4 + 0.6
                 else 1
              in Player.draw gameState.player |> alpha a
-            , Bullet.draw gameState.bullets
-            , SegmentParticle.draw gameState.segmentParticles
+            , drawGroup Bullet.draw gameState.bullets
+            , drawGroup SegmentParticle.draw gameState.segmentParticles
             , Hud.draw gameState.sector gameState.score gameState.lives |> alpha (min gameState.stateTime 1)
             ]
 
@@ -493,8 +495,8 @@ view model =
           group
             [ Star.draw postGameState.stars
             , Player.draw postGameState.player
-            , Bullet.draw postGameState.bullets
-            , SegmentParticle.draw postGameState.segmentParticles
+            , drawGroup Bullet.draw postGameState.bullets
+            , drawGroup SegmentParticle.draw postGameState.segmentParticles
             , group
                 [ defaultText 26 ("sector " ++ toString postGameState.sector ++ " cleared") |> moveY 50
                 , defaultText 18 ("score: " ++ toString postGameState.score ++ " // " ++ Hud.livesText postGameState.lives) |> moveY -30
@@ -505,9 +507,9 @@ view model =
         GameOver gameOverState ->
           group
             [ Star.draw gameOverState.stars
-            , Asteroid.draw gameOverState.asteroids
-            , Bullet.draw gameOverState.bullets
-            , SegmentParticle.draw gameOverState.segmentParticles
+            , drawGroup Asteroid.draw gameOverState.asteroids
+            , drawGroup Bullet.draw gameOverState.bullets
+            , drawGroup SegmentParticle.draw gameOverState.segmentParticles
             , group
                 [ defaultText 36 "GAME OVER" |> moveY 30
                 , defaultText 18 ("sector " ++ toString gameOverState.sector ++ " // score: " ++ toString gameOverState.score) |> moveY -30

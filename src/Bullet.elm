@@ -18,9 +18,7 @@ type alias Model =
 fire : Player.Model -> List Model -> List Model
 fire player bullets =
   { position = Ship.front player.position player.rotation
-  , velocity =
-    player.velocity
-  |> add (rotate player.rotation (0, 80))
+  , velocity = player.velocity |> add (rotate player.rotation (0, 80))
   , timeUntilDeath = 3.0
   } :: bullets
 
@@ -41,11 +39,8 @@ killBullet timeDelta bullet =
       Just { bullet | timeUntilDeath = timeUntilDeath }
     else Nothing
 
-draw : List Model -> Form
-draw = map drawBullet >> group
-
-drawBullet : Model -> Form
-drawBullet bullet =
+draw : Model -> Form
+draw bullet =
   rect 2 2
   |> filled white
   |> move bullet.position

@@ -40,10 +40,7 @@ tick : Float -> Model -> Model
 tick timeDelta star =
   { star | blinkPhase = star.blinkPhase + star.blinkFrequency * timeDelta }
 
-draw : List Model -> Form
-draw = map drawStar >> group
-
-drawStar : Model -> Form
-drawStar star =
+draw : Model -> Form
+draw star =
   let blink = sin(star.blinkPhase) * 0.4 + 0.6
   in rect 1 1 |> filled white |> move star.position |> alpha blink

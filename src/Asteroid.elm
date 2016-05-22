@@ -180,11 +180,8 @@ rotateAsteroid timeDelta asteroid =
       asteroid.rotation + asteroid.rotationVelocity * timeDelta
   }
 
-draw : List Model -> Form
-draw = map drawAsteroid >> group
-
-drawAsteroid : Model -> Form
-drawAsteroid asteroid =
+draw : Model -> Form
+draw asteroid =
   asteroid
     |> absolutePoints
     |> wrapPoints

@@ -78,11 +78,8 @@ killParticle timeDelta particle =
       Just { particle | timeUntilDeath = timeUntilDeath }
     else Nothing
 
-draw : List Model -> Form
-draw = map drawParticle >> group
-
-drawParticle : Model -> Form
-drawParticle particle =
+draw : Model -> Form
+draw particle =
   particle.segment
     |> Segment.wrap
     |> map (drawSegment particle.rotation)
