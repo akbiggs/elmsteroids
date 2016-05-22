@@ -1,4 +1,4 @@
-module SegmentParticles exposing (SegmentParticle, segmentParticles, tick, draw)
+module SegmentParticle exposing (Model, segmentParticles, tick, draw)
 
 import List exposing (map, filterMap)
 import Collage exposing (Form, group, path, traced, defaultLine, move, alpha)
@@ -8,7 +8,7 @@ import State exposing (..)
 import Vector exposing (..)
 import Segment exposing (Segment, center)
 
-type alias SegmentParticle =
+type alias Model =
   { position : Vector
   , velocity : Vector
   , rotation : Float
@@ -17,7 +17,7 @@ type alias SegmentParticle =
   , timeUntilDeath : Float
   }
 
-segmentParticles : Vector -> List Segment -> State Seed (List SegmentParticle)
+segmentParticles : Vector -> List Segment -> State Seed (List Model)
 segmentParticles initialVelocity segments =
   case segments of
     [] -> return []
@@ -26,7 +26,7 @@ segmentParticles initialVelocity segments =
         <$> segmentParticle initialVelocity x
         <*> segmentParticles initialVelocity xs
 
-segmentParticle : Vector -> Segment -> State Seed SegmentParticle
+segmentParticle : Vector -> Segment -> State Seed Model
 segmentParticle initialVelocity segment =
   let angle = float 0 (pi * 2) |> step
   in
@@ -52,23 +52,23 @@ segmentParticle initialVelocity segment =
                 , timeUntilDeath = timeUntilDeath
                 }
 
-tick : Float -> List SegmentParticle -> List SegmentParticle
+tick : Float -> List Model -> List Model
 tick timeDelta =
   filterMap (moveParticle timeDelta >> rotateParticle timeDelta >> killParticle timeDelta)
 
-moveParticle : Float -> SegmentParticle -> SegmentParticle
+moveParticle : Float -> Model -> Model
 moveParticle timeDelta particle =
   { particle | position =
       add particle.position (mulS timeDelta particle.velocity) |> wrap
   }
 
-rotateParticle : Float -> SegmentParticle -> SegmentParticle
+rotateParticle : Float -> Model -> Model
 rotateParticle timeDelta particle =
   { particle | rotation =
       particle.rotation + particle.rotationVelocity * timeDelta
   }
 
-killParticle : Float -> SegmentParticle -> Maybe SegmentParticle
+killParticle : Float -> Model -> Maybe Model
 killParticle timeDelta particle =
   let timeUntilDeath = particle.timeUntilDeath - timeDelta
   in
@@ -76,10 +76,10 @@ killParticle timeDelta particle =
       Just { particle | timeUntilDeath = timeUntilDeath }
     else Nothing
 
-draw : List SegmentParticle -> Form
+draw : List Model -> Form
 draw = map drawParticle >> group
 
-drawParticle : SegmentParticle -> Form
+drawParticle : Model -> Form
 drawParticle particle =
   particle.segment
     |> Segment.wrap

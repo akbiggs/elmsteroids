@@ -9,7 +9,7 @@ import Vector exposing (..)
 import Segment exposing (Segment)
 import Triangle exposing (Triangle)
 import Bounds exposing (..)
-import SegmentParticles exposing (SegmentParticle, segmentParticles)
+import SegmentParticle exposing (segmentParticles)
 import Wrap
 
 -- MODEL
@@ -71,7 +71,7 @@ wrappedSegments : Model -> List Segment
 wrappedSegments =
   segments >> concatMap Segment.wrap
 
-split : Model -> State Seed (List Model, List SegmentParticle)
+split : Model -> State Seed (List Model, List SegmentParticle.Model)
 split asteroid =
   segmentParticles asteroid.velocity (segments asteroid) >>= \particles ->
     let size = asteroid.size - 1
