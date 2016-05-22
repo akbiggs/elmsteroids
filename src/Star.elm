@@ -36,11 +36,8 @@ initStar =
             , blinkFrequency = frequency
             }
 
-tick : Float -> List Model -> List Model
-tick timeDelta = map (tickStar timeDelta)
-
-tickStar : Float -> Model -> Model
-tickStar timeDelta star =
+tick : Float -> Model -> Model
+tick timeDelta star =
   { star | blinkPhase = star.blinkPhase + star.blinkFrequency * timeDelta }
 
 draw : List Model -> Form

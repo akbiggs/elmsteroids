@@ -54,9 +54,9 @@ segmentParticle initialVelocity segment =
                 , timeUntilDeath = timeUntilDeath
                 }
 
-tick : Float -> List Model -> List Model
+tick : Float -> Model -> Maybe Model
 tick timeDelta =
-  filterMap (moveParticle timeDelta >> rotateParticle timeDelta >> killParticle timeDelta)
+  moveParticle timeDelta >> rotateParticle timeDelta >> killParticle timeDelta
 
 moveParticle : Float -> Model -> Model
 moveParticle timeDelta particle =

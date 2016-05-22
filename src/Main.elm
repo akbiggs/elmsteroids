@@ -179,8 +179,8 @@ initStarsAndAsteroids =
 tickTitle : Float -> TitleState -> TitleState
 tickTitle timeDelta titleState =
   { titleState
-    | stars = Star.tick timeDelta titleState.stars
-    , asteroids = Asteroid.tick timeDelta titleState.asteroids
+    | stars = List.map (Star.tick timeDelta) titleState.stars
+    , asteroids = List.map (Asteroid.tick timeDelta) titleState.asteroids
     , stateTime = titleState.stateTime + timeDelta
   }
 
@@ -200,9 +200,9 @@ initPreGame sector score lives stars asteroids bullets segmentParticles randomSe
 tickPreGame : Float -> PreGameState -> Model
 tickPreGame timeDelta preGameState =
   let
-    stars = Star.tick timeDelta preGameState.stars
-    asteroids = Asteroid.tick timeDelta preGameState.asteroids
-    bullets = Bullet.tick timeDelta preGameState.bullets
+    stars = List.map (Star.tick timeDelta) preGameState.stars
+    asteroids = List.map (Asteroid.tick timeDelta) preGameState.asteroids
+    bullets = List.filterMap (Bullet.tick timeDelta) preGameState.bullets
 
     ((asteroids', bullets', segmentParticles, _, _), randomSeed) =
       collide
@@ -211,7 +211,7 @@ tickPreGame timeDelta preGameState =
         bullets
         preGameState.randomSeed
 
-    segmentParticles' = SegmentParticle.tick timeDelta preGameState.segmentParticles ++ segmentParticles
+    segmentParticles' = List.filterMap (SegmentParticle.tick timeDelta) preGameState.segmentParticles ++ segmentParticles
   in
     if preGameState.stateTime >= preGameLength then
       Game
@@ -264,10 +264,10 @@ initGame sector score lives stars asteroids bullets segmentParticles randomSeed 
 tickGame : Float -> GameState -> Model
 tickGame timeDelta gameState =
   let
-    stars = Star.tick timeDelta gameState.stars
+    stars = List.map (Star.tick timeDelta) gameState.stars
     player = Player.tick timeDelta gameState.keys gameState.player
-    asteroids = Asteroid.tick timeDelta gameState.asteroids
-    bullets = Bullet.tick timeDelta gameState.bullets
+    asteroids = List.map (Asteroid.tick timeDelta) gameState.asteroids
+    bullets = List.filterMap (Bullet.tick timeDelta) gameState.bullets
     (bullets', fireTime) =
       if gameState.keys.space && gameState.fireTime >= 0 then
         (Bullet.fire gameState.player bullets, -0.3)
@@ -281,7 +281,7 @@ tickGame timeDelta gameState =
         gameState.randomSeed
 
     score' = gameState.score + score
-    segmentParticles' = SegmentParticle.tick timeDelta gameState.segmentParticles ++ segmentParticles
+    segmentParticles' = List.filterMap (SegmentParticle.tick timeDelta) gameState.segmentParticles ++ segmentParticles
   in
     if hitPlayer then
       let lives = gameState.lives - 1
@@ -357,10 +357,10 @@ initPostGame sector score lives stars player bullets segmentParticles randomSeed
 tickPostGame : Float -> PostGameState -> Model
 tickPostGame timeDelta postGameState =
   let
-    stars = Star.tick timeDelta postGameState.stars
+    stars = List.map (Star.tick timeDelta) postGameState.stars
     player = Player.tick timeDelta postGameState.keys postGameState.player
-    bullets = Bullet.tick timeDelta postGameState.bullets
-    segmentParticles = SegmentParticle.tick timeDelta postGameState.segmentParticles
+    bullets = List.filterMap (Bullet.tick timeDelta) postGameState.bullets
+    segmentParticles = List.filterMap (SegmentParticle.tick timeDelta) postGameState.segmentParticles
   in
     if postGameState.stateTime >= postGameLength then
       let ((stars', asteroids), randomSeed) = initStarsAndAsteroids postGameState.randomSeed
@@ -400,9 +400,9 @@ initGameOver sector score stars asteroids bullets segmentParticles randomSeed =
 tickGameOver : Float -> GameOverState -> Model
 tickGameOver timeDelta gameOverState =
   let
-    stars = Star.tick timeDelta gameOverState.stars
-    asteroids = Asteroid.tick timeDelta gameOverState.asteroids
-    bullets = Bullet.tick timeDelta gameOverState.bullets
+    stars = List.map (Star.tick timeDelta) gameOverState.stars
+    asteroids = List.map (Asteroid.tick timeDelta) gameOverState.asteroids
+    bullets = List.filterMap (Bullet.tick timeDelta) gameOverState.bullets
 
     ((asteroids', bullets', segmentParticles, _, _), randomSeed) =
       collide
@@ -411,7 +411,7 @@ tickGameOver timeDelta gameOverState =
         bullets
         gameOverState.randomSeed
 
-    segmentParticles' = SegmentParticle.tick timeDelta gameOverState.segmentParticles ++ segmentParticles
+    segmentParticles' = List.filterMap (SegmentParticle.tick timeDelta) gameOverState.segmentParticles ++ segmentParticles
   in
     GameOver
       { gameOverState

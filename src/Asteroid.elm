@@ -165,8 +165,8 @@ initPoints' segAngleDelta minRadius maxRadius count =
           in
             ((::) point) <$> initPoints' segAngleDelta minRadius maxRadius (count - 1)
 
-tick : Float -> List Model -> List Model
-tick timeDelta = map (moveAsteroid timeDelta >> rotateAsteroid timeDelta)
+tick : Float -> Model -> Model
+tick timeDelta = moveAsteroid timeDelta >> rotateAsteroid timeDelta
 
 moveAsteroid : Float -> Model -> Model
 moveAsteroid timeDelta asteroid =

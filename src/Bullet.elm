@@ -24,8 +24,8 @@ fire player bullets =
   , timeUntilDeath = 3.0
   } :: bullets
 
-tick : Float -> List Model -> List Model
-tick timeDelta = filterMap (moveBullet timeDelta >> killBullet timeDelta)
+tick : Float -> Model -> Maybe Model
+tick timeDelta = moveBullet timeDelta >> killBullet timeDelta
 
 moveBullet : Float -> Model -> Model
 moveBullet timeDelta bullet =
