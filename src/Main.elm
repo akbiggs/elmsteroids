@@ -21,6 +21,7 @@ import Ship
 import Collisions exposing (..)
 import Hud
 import DrawUtilities exposing (..)
+import Keys
 
 main : Program Never
 main =
@@ -117,50 +118,48 @@ type Msg
 
 update : Msg -> Model -> Model
 update msg model =
-  let enter = 13
-  in
-    case model of
-      Uninitialized ->
-        case msg of
-          Init time ->
-            let randomSeed = inMilliseconds time |> floor |> initialSeed
-            in Title (initTitle randomSeed)
-          _ -> model
+  case model of
+    Uninitialized ->
+      case msg of
+        Init time ->
+          let randomSeed = inMilliseconds time |> floor |> initialSeed
+          in Title (initTitle randomSeed)
+        _ -> model
 
-      Title titleState ->
-        case msg of
-          Tick timeDelta -> Title (tickTitle (inSeconds timeDelta) titleState)
-          KeyPressed key ->
-            if key == enter then
-              PreGame (initPreGame 1 0 3 titleState.stars titleState.asteroids [] [] titleState.randomSeed)
-            else model
-          _ -> model
+    Title titleState ->
+      case msg of
+        Tick timeDelta -> Title (tickTitle (inSeconds timeDelta) titleState)
+        KeyPressed key ->
+          if key == Keys.enter then
+            PreGame (initPreGame 1 0 3 titleState.stars titleState.asteroids [] [] titleState.randomSeed)
+          else model
+        _ -> model
 
-      PreGame preGameState ->
-        case msg of
-          Tick timeDelta -> tickPreGame (inSeconds timeDelta) preGameState
-          _ -> model
+    PreGame preGameState ->
+      case msg of
+        Tick timeDelta -> tickPreGame (inSeconds timeDelta) preGameState
+        _ -> model
 
-      Game gameState ->
-        case msg of
-          Tick timeDelta -> tickGame (inSeconds timeDelta) gameState
-          KeyPressed key -> Game { gameState | keys = KeyStates.pressed key gameState.keys }
-          KeyReleased key -> Game { gameState | keys = KeyStates.released key gameState.keys }
-          _ -> model
+    Game gameState ->
+      case msg of
+        Tick timeDelta -> tickGame (inSeconds timeDelta) gameState
+        KeyPressed key -> Game { gameState | keys = KeyStates.pressed key gameState.keys }
+        KeyReleased key -> Game { gameState | keys = KeyStates.released key gameState.keys }
+        _ -> model
 
-      PostGame postGameState ->
-        case msg of
-          Tick timeDelta -> tickPostGame (inSeconds timeDelta) postGameState
-          _ -> model
+    PostGame postGameState ->
+      case msg of
+        Tick timeDelta -> tickPostGame (inSeconds timeDelta) postGameState
+        _ -> model
 
-      GameOver gameOverState ->
-        case msg of
-          Tick timeDelta -> tickGameOver (inSeconds timeDelta) gameOverState
-          KeyPressed key ->
-            if key == enter then
-              Title (initTitle gameOverState.randomSeed)
-            else model
-          _ -> model
+    GameOver gameOverState ->
+      case msg of
+        Tick timeDelta -> tickGameOver (inSeconds timeDelta) gameOverState
+        KeyPressed key ->
+          if key == Keys.enter then
+            Title (initTitle gameOverState.randomSeed)
+          else model
+        _ -> model
 
 initTitle : Seed -> TitleState
 initTitle randomSeed =
@@ -493,7 +492,7 @@ view model =
 
         PostGame postGameState ->
           group
-            [ Star.draw postGameState.stars
+            [ drawGroup Star.draw postGameState.stars
             , Player.draw postGameState.player
             , drawGroup Bullet.draw postGameState.bullets
             , drawGroup SegmentParticle.draw postGameState.segmentParticles
@@ -506,7 +505,7 @@ view model =
 
         GameOver gameOverState ->
           group
-            [ Star.draw gameOverState.stars
+            [ drawGroup Star.draw gameOverState.stars
             , drawGroup Asteroid.draw gameOverState.asteroids
             , drawGroup Bullet.draw gameOverState.bullets
             , drawGroup SegmentParticle.draw gameOverState.segmentParticles

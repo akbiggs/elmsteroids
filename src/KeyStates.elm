@@ -1,5 +1,6 @@
 module KeyStates exposing (KeyStates, pressed, released)
 
+import Keys exposing (..)
 import Keyboard exposing (..)
 
 type alias KeyStates =
@@ -9,21 +10,6 @@ type alias KeyStates =
   , down : Bool
   , space : Bool
   }
-
-left : KeyCode
-left = 37
-
-right : KeyCode
-right = 39
-
-up : KeyCode
-up = 38
-
-down : KeyCode
-down = 40
-
-space : KeyCode
-space = 32
 
 pressed : KeyCode -> KeyStates -> KeyStates
 pressed key keys =
