@@ -8,6 +8,8 @@ import State exposing (..)
 import Vector exposing (..)
 import Segment exposing (Segment, center)
 
+-- MODEL
+
 type alias Model =
   { position : Vector
   , velocity : Vector

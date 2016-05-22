@@ -8,6 +8,8 @@ import State exposing (..)
 import Vector exposing (..)
 import Bounds exposing (..)
 
+-- MODEL
+
 type alias Model =
   { position : Vector
   , blinkPhase : Float

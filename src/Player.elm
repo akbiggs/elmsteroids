@@ -5,6 +5,8 @@ import Vector exposing (..)
 import Ship
 import KeyStates exposing (KeyStates)
 
+-- MODEL
+
 type alias Model =
   { position : Vector
   , velocity : Vector
