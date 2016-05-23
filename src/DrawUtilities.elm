@@ -1,4 +1,4 @@
-module DrawUtilities exposing (..)
+module DrawUtilities exposing (drawGroup)
 
 import List exposing (map)
 import Collage exposing (Form, group)

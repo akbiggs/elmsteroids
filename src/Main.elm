@@ -23,6 +23,9 @@ import Hud
 import DrawUtilities exposing (..)
 import Keys
 
+
+-- <editor-fold> PROGRAM
+
 main : Program Never
 main =
   Html.App.program
@@ -31,6 +34,10 @@ main =
     , subscriptions = subscriptions
     , view = view
     }
+
+-- </editor-fold>
+
+-- <editor-fold> MODEL
 
 type Model
   = Uninitialized
@@ -107,8 +114,102 @@ type alias GameOverState =
   , stateTime : Float
   }
 
+-- <editor-fold> Constructors
 init : Model
 init = Uninitialized
+
+initTitle : Seed -> TitleState
+initTitle randomSeed =
+  let ((stars, asteroids), randomSeed) = initStarsAndAsteroids randomSeed
+  in
+    { stars = stars
+    , asteroids = asteroids
+    , randomSeed = randomSeed
+    , stateTime = 0
+    }
+
+initStarsAndAsteroids : State Seed (List Star.Model, List Asteroid.Model)
+initStarsAndAsteroids =
+  Star.init >>= \stars ->
+    Asteroid.init >>= \asteroids ->
+      return (stars, asteroids)
+
+initPreGame : Int -> Int -> Int -> List Star.Model -> List Asteroid.Model -> List Bullet.Model -> List SegmentParticle.Model -> Seed -> PreGameState
+initPreGame sector score lives stars asteroids bullets segmentParticles randomSeed =
+  { sector = sector
+  , score = score
+  , stars = stars
+  , lives = lives
+  , asteroids = asteroids
+  , bullets = bullets
+  , segmentParticles = segmentParticles
+  , randomSeed = randomSeed
+  , stateTime = 0
+  }
+
+initGame : Int -> Int -> Int -> List Star.Model -> List Asteroid.Model -> List Bullet.Model -> List SegmentParticle.Model -> Seed -> GameState
+initGame sector score lives stars asteroids bullets segmentParticles randomSeed =
+  { sector = sector
+  , score = score
+  , lives = lives
+  , stars = stars
+  , player =
+      { position = (0, 0)
+      , velocity = (0, 0)
+      , rotation = 0
+      }
+  , asteroids = asteroids
+  , bullets = bullets
+  , segmentParticles = segmentParticles
+  , keys =
+      { left = False
+      , right = False
+      , up = False
+      , down = False
+      , space = False
+      }
+  , randomSeed = randomSeed
+  , fireTime = 0
+  , stateTime = 0
+  }
+
+initPostGame : Int -> Int -> Int -> List Star.Model -> Player.Model -> List Bullet.Model -> List SegmentParticle.Model -> Seed -> PostGameState
+initPostGame sector score lives stars player bullets segmentParticles randomSeed =
+  { sector = sector
+  , score = score
+  , stars = stars
+  , lives = lives
+  , player = player
+  , bullets = bullets
+  , segmentParticles = segmentParticles
+  , keys =
+      { left = False
+      , right = False
+      , up = False
+      , down = False
+      , space = False
+      }
+  , randomSeed = randomSeed
+  , stateTime = 0
+  }
+
+initGameOver : Int -> Int -> List Star.Model -> List Asteroid.Model -> List Bullet.Model -> List SegmentParticle.Model -> Seed -> GameOverState
+initGameOver sector score stars asteroids bullets segmentParticles randomSeed =
+  { sector = sector
+  , score = score
+  , stars = stars
+  , asteroids = asteroids
+  , bullets = bullets
+  , segmentParticles = segmentParticles
+  , randomSeed = randomSeed
+  , stateTime = 0
+  }
+
+-- </editor-fold>
+
+-- </editor-fold>
+
+-- <editor-fold> UPDATE
 
 type Msg
   = Init Time
@@ -161,22 +262,6 @@ update msg model =
           else model
         _ -> model
 
-initTitle : Seed -> TitleState
-initTitle randomSeed =
-  let ((stars, asteroids), randomSeed) = initStarsAndAsteroids randomSeed
-  in
-    { stars = stars
-    , asteroids = asteroids
-    , randomSeed = randomSeed
-    , stateTime = 0
-    }
-
-initStarsAndAsteroids : State Seed (List Star.Model, List Asteroid.Model)
-initStarsAndAsteroids =
-  Star.init >>= \stars ->
-    Asteroid.init >>= \asteroids ->
-      return (stars, asteroids)
-
 tickTitle : Float -> TitleState -> TitleState
 tickTitle timeDelta titleState =
   { titleState
@@ -185,25 +270,12 @@ tickTitle timeDelta titleState =
     , stateTime = titleState.stateTime + timeDelta
   }
 
-initPreGame : Int -> Int -> Int -> List Star.Model -> List Asteroid.Model -> List Bullet.Model -> List SegmentParticle.Model -> Seed -> PreGameState
-initPreGame sector score lives stars asteroids bullets segmentParticles randomSeed =
-  { sector = sector
-  , score = score
-  , stars = stars
-  , lives = lives
-  , asteroids = asteroids
-  , bullets = bullets
-  , segmentParticles = segmentParticles
-  , randomSeed = randomSeed
-  , stateTime = 0
-  }
-
 tickPreGame : Float -> PreGameState -> Model
 tickPreGame timeDelta preGameState =
   let
     stars = List.map (Star.tick timeDelta) preGameState.stars
     asteroids = List.map (Asteroid.tick timeDelta) preGameState.asteroids
-    bullets = List.filterMap (Bullet.tick timeDelta) preGameState.bullets
+    bullets = List.filterMap (Bullet.update (Bullet.Tick timeDelta) >> fst) preGameState.bullets
 
     ((asteroids', bullets', segmentParticles, _, _), randomSeed) =
       collide
@@ -236,39 +308,13 @@ tickPreGame timeDelta preGameState =
           , stateTime = preGameState.stateTime + timeDelta
         }
 
-initGame : Int -> Int -> Int -> List Star.Model -> List Asteroid.Model -> List Bullet.Model -> List SegmentParticle.Model -> Seed -> GameState
-initGame sector score lives stars asteroids bullets segmentParticles randomSeed =
-  { sector = sector
-  , score = score
-  , lives = lives
-  , stars = stars
-  , player =
-      { position = (0, 0)
-      , velocity = (0, 0)
-      , rotation = 0
-      }
-  , asteroids = asteroids
-  , bullets = bullets
-  , segmentParticles = segmentParticles
-  , keys =
-      { left = False
-      , right = False
-      , up = False
-      , down = False
-      , space = False
-      }
-  , randomSeed = randomSeed
-  , fireTime = 0
-  , stateTime = 0
-  }
-
 tickGame : Float -> GameState -> Model
 tickGame timeDelta gameState =
   let
     stars = List.map (Star.tick timeDelta) gameState.stars
     player = Player.tick timeDelta gameState.keys gameState.player
     asteroids = List.map (Asteroid.tick timeDelta) gameState.asteroids
-    bullets = List.filterMap (Bullet.tick timeDelta) gameState.bullets
+    bullets = List.filterMap (Bullet.update (Bullet.Tick timeDelta) >> fst) gameState.bullets
     (bullets', fireTime) =
       if gameState.keys.space && gameState.fireTime >= 0 then
         (Bullet.fire gameState.player bullets, -0.3)
@@ -335,32 +381,12 @@ tickGame timeDelta gameState =
               , stateTime = gameState.stateTime + timeDelta
             }
 
-initPostGame : Int -> Int -> Int -> List Star.Model -> Player.Model -> List Bullet.Model -> List SegmentParticle.Model -> Seed -> PostGameState
-initPostGame sector score lives stars player bullets segmentParticles randomSeed =
-  { sector = sector
-  , score = score
-  , stars = stars
-  , lives = lives
-  , player = player
-  , bullets = bullets
-  , segmentParticles = segmentParticles
-  , keys =
-      { left = False
-      , right = False
-      , up = False
-      , down = False
-      , space = False
-      }
-  , randomSeed = randomSeed
-  , stateTime = 0
-  }
-
 tickPostGame : Float -> PostGameState -> Model
 tickPostGame timeDelta postGameState =
   let
     stars = List.map (Star.tick timeDelta) postGameState.stars
     player = Player.tick timeDelta postGameState.keys postGameState.player
-    bullets = List.filterMap (Bullet.tick timeDelta) postGameState.bullets
+    bullets = List.filterMap (Bullet.update (Bullet.Tick timeDelta) >> fst) postGameState.bullets
     segmentParticles = List.filterMap (SegmentParticle.tick timeDelta) postGameState.segmentParticles
   in
     if postGameState.stateTime >= postGameLength then
@@ -386,24 +412,12 @@ tickPostGame timeDelta postGameState =
           , stateTime = postGameState.stateTime + timeDelta
         }
 
-initGameOver : Int -> Int -> List Star.Model -> List Asteroid.Model -> List Bullet.Model -> List SegmentParticle.Model -> Seed -> GameOverState
-initGameOver sector score stars asteroids bullets segmentParticles randomSeed =
-  { sector = sector
-  , score = score
-  , stars = stars
-  , asteroids = asteroids
-  , bullets = bullets
-  , segmentParticles = segmentParticles
-  , randomSeed = randomSeed
-  , stateTime = 0
-  }
-
 tickGameOver : Float -> GameOverState -> Model
 tickGameOver timeDelta gameOverState =
   let
     stars = List.map (Star.tick timeDelta) gameOverState.stars
     asteroids = List.map (Asteroid.tick timeDelta) gameOverState.asteroids
-    bullets = List.filterMap (Bullet.tick timeDelta) gameOverState.bullets
+    bullets = List.filterMap (Bullet.update (Bullet.Tick timeDelta) >> fst) gameOverState.bullets
 
     ((asteroids', bullets', segmentParticles, _, _), randomSeed) =
       collide
@@ -424,6 +438,10 @@ tickGameOver timeDelta gameOverState =
         , stateTime = gameOverState.stateTime + timeDelta
       }
 
+-- </editor-fold>
+
+-- <editor-fold> SUBSCRIPTIONS
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
   case model of
@@ -431,10 +449,13 @@ subscriptions model =
     _ ->
       Sub.batch
            [ diffs Tick
-
            , downs KeyPressed
            , ups KeyReleased
            ]
+
+-- </editor-fold>
+
+-- <editor-fold> VIEW
 
 view : Model -> Html Msg
 view model =
@@ -522,3 +543,5 @@ view model =
       , scene
       ]
       |> Element.toHtml
+
+-- </editor-fold>

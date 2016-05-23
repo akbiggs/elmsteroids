@@ -8,8 +8,10 @@ return x state = (x, state)
 (>>=) : State s a -> (a -> State s b) -> State s b
 (>>=) s f =
   \state ->
-    let (x, state') = s state
-    in f x state'
+    let
+      (x, state') = s state
+    in
+      f x state'
 
 fmap : (a -> b) -> State s a -> State s b
 fmap f s =
