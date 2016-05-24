@@ -10,7 +10,8 @@ import Keyboard.Extra as Keyboard
 -- <editor-fold> TYPES
 
 type ExternalMsg
-  = Tick Time
+  = Init Time
+  | Tick Time
   | KeyboardUpdate Keyboard.Msg
   | PlaySound String
 

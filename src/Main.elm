@@ -120,11 +120,11 @@ type alias GameOverState =
   }
 
 -- <editor-fold> Constructors
-init : (Model, Cmd Msg)
+init : (Model, Cmd ExternalMsg)
 init =
   Uninitialized ! []
 
-initTitle : Seed -> (TitleState, Cmd Msg)
+initTitle : Seed -> (TitleState, Cmd ExternalMsg)
 initTitle randomSeed =
   let
     ((stars, asteroids), randomSeed) =
@@ -134,7 +134,7 @@ initTitle randomSeed =
       Keyboard.init
 
     msgs =
-      [Cmd.map KeyboardMsg keyboardCmd]
+      [Cmd.map KeyboardUpdate keyboardCmd]
   in
     { stars = stars
     , asteroids = asteroids
@@ -216,12 +216,7 @@ initGameOver sector score stars asteroids bullets segmentParticles keyboard rand
 
 -- <editor-fold> UPDATE
 
-type Msg
-  = Init Time
-  | Tick Time
-  | KeyboardMsg Keyboard.Msg
-
-update : Msg -> Model -> (Model, Cmd Msg)
+update : ExternalMsg -> Model -> (Model, Cmd ExternalMsg)
 update msg model =
   case model of
     Uninitialized ->
@@ -247,13 +242,13 @@ update msg model =
         Tick dt ->
           Title (tickTitle (inSeconds dt) titleState) ! []
 
-        KeyboardMsg keyMsg ->
+        KeyboardUpdate keyMsg ->
           let
             (keyboard, keyboardMsg) =
               Keyboard.update keyMsg titleState.keyboard
 
             msgs =
-              [Cmd.map KeyboardMsg keyboardMsg]
+              [Cmd.map KeyboardUpdate keyboardMsg]
           in
             if Keyboard.isPressed Keyboard.Enter keyboard then
               PreGame (initPreGame 1 0 3 titleState.stars titleState.asteroids [] [] keyboard titleState.randomSeed) ! msgs
@@ -271,13 +266,13 @@ update msg model =
         Tick dt ->
           tickPreGame (inSeconds dt) preGameState ! []
 
-        KeyboardMsg keyMsg ->
+        KeyboardUpdate keyMsg ->
           let
             (keyboard, keyboardMsg) =
               Keyboard.update keyMsg preGameState.keyboard
 
             msgs =
-              [Cmd.map KeyboardMsg keyboardMsg]
+              [Cmd.map KeyboardUpdate keyboardMsg]
           in
             PreGame
               { preGameState
@@ -292,13 +287,13 @@ update msg model =
         Tick dt ->
           tickGame (inSeconds dt) gameState ! []
 
-        KeyboardMsg keyMsg ->
+        KeyboardUpdate keyMsg ->
           let
             (keyboard, keyboardMsg) =
               Keyboard.update keyMsg gameState.keyboard
 
             msgs =
-              [Cmd.map KeyboardMsg keyboardMsg]
+              [Cmd.map KeyboardUpdate keyboardMsg]
           in
             Game
               { gameState
@@ -313,13 +308,13 @@ update msg model =
         Tick dt ->
           tickPostGame (inSeconds dt) postGameState ! []
 
-        KeyboardMsg keyMsg ->
+        KeyboardUpdate keyMsg ->
           let
             (keyboard, keyboardMsg) =
               Keyboard.update keyMsg postGameState.keyboard
 
             msgs =
-              [Cmd.map KeyboardMsg keyboardMsg]
+              [Cmd.map KeyboardUpdate keyboardMsg]
           in
             PostGame
               { postGameState
@@ -334,13 +329,13 @@ update msg model =
         Tick dt ->
           tickGameOver (inSeconds dt) gameOverState ! []
 
-        KeyboardMsg keyMsg ->
+        KeyboardUpdate keyMsg ->
           let
             (keyboard, keyboardMsg) =
               Keyboard.update keyMsg gameOverState.keyboard
 
             msgs =
-              [Cmd.map KeyboardMsg keyboardMsg]
+              [Cmd.map KeyboardUpdate keyboardMsg]
           in
             GameOver
               { gameOverState
@@ -362,7 +357,7 @@ tickPreGame : Time -> PreGameState -> Model
 tickPreGame dt preGameState =
   let
     tickMsg =
-      ExternalMsg.Tick dt
+      Tick dt
 
     stars =
       List.map (Star.tick dt) preGameState.stars
@@ -406,7 +401,7 @@ tickGame : Time -> GameState -> Model
 tickGame dt gameState =
   let
     tickMsg =
-      ExternalMsg.Tick dt
+      Tick dt
 
     stars =
       List.map (Star.tick dt) gameState.stars
@@ -423,7 +418,8 @@ tickGame dt gameState =
     (bullets', fireTime) =
       if Keyboard.isPressed Keyboard.Space gameState.keyboard && gameState.fireTime >= 0 then
         (Bullet.fire gameState.player bullets, -0.3)
-      else (bullets, gameState.fireTime + dt)
+      else
+        (bullets, gameState.fireTime + dt)
 
     ((asteroids', bullets'', segmentParticles, score, hitPlayer), randomSeed) =
       collide
@@ -439,7 +435,9 @@ tickGame dt gameState =
       List.filterMap (SegmentParticle.tick dt) gameState.segmentParticles ++ segmentParticles
   in
     if hitPlayer then
-      let lives = gameState.lives - 1
+      let
+        lives =
+          gameState.lives - 1
       in
         if lives > 0 then
           PreGame
@@ -481,22 +479,22 @@ tickGame dt gameState =
         _ ->
           Game
             { gameState
-              | score = score'
-              , stars = stars
-              , player = player
-              , asteroids = asteroids'
-              , bullets = bullets''
-              , segmentParticles = segmentParticles'
-              , randomSeed = randomSeed
-              , fireTime = fireTime
-              , stateTime = gameState.stateTime + dt
+            | score = score'
+            , stars = stars
+            , player = player
+            , asteroids = asteroids'
+            , bullets = bullets''
+            , segmentParticles = segmentParticles'
+            , randomSeed = randomSeed
+            , fireTime = fireTime
+            , stateTime = gameState.stateTime + dt
             }
 
 tickPostGame : Time -> PostGameState -> Model
 tickPostGame dt postGameState =
   let
     tickMsg =
-      ExternalMsg.Tick dt
+      Tick dt
 
     stars =
       List.map (Star.tick dt) postGameState.stars
@@ -529,18 +527,18 @@ tickPostGame dt postGameState =
     else
       PostGame
         { postGameState
-          | stars = stars
-          , player = player
-          , bullets = bullets
-          , segmentParticles = segmentParticles
-          , stateTime = postGameState.stateTime + dt
+        | stars = stars
+        , player = player
+        , bullets = bullets
+        , segmentParticles = segmentParticles
+        , stateTime = postGameState.stateTime + dt
         }
 
 tickGameOver : Time -> GameOverState -> Model
 tickGameOver dt gameOverState =
   let
     tickMsg =
-      ExternalMsg.Tick dt
+      Tick dt
 
     stars =
       List.map (Star.tick dt) gameOverState.stars
@@ -575,21 +573,23 @@ tickGameOver dt gameOverState =
 
 -- <editor-fold> SUBSCRIPTIONS
 
-subscriptions : Model -> Sub Msg
+subscriptions : Model -> Sub ExternalMsg
 subscriptions model =
   case model of
-    Uninitialized -> times Init
+    Uninitialized ->
+      times Init
+
     _ ->
       Sub.batch
-           [ diffs Tick
-           , Sub.map KeyboardMsg Keyboard.subscriptions
-           ]
+        [ diffs Tick
+        , Sub.map KeyboardUpdate Keyboard.subscriptions
+        ]
 
 -- </editor-fold>
 
 -- <editor-fold> VIEW
 
-view : Model -> Html Msg
+view : Model -> Html ExternalMsg
 view model =
   let
     scene =
