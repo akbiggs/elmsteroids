@@ -1,9 +1,19 @@
-module Asteroid exposing (Model, liesInside, wrappedSegments, split, init, tick, draw)
+module Asteroid exposing (Model, liesInside, wrappedSegments, split, init, update, draw)
+
+-- <editor-fold> IMPORTS
+
+-- <editor-fold> EXTERNAL IMPORTS
 
 import List exposing (map, concatMap, any)
 import Collage exposing (Form, group, polygon, filled, outlined, defaultLine)
 import Color exposing (..)
 import Random exposing (Seed, int, float, step)
+import ExternalMsg exposing (..)
+
+-- </editor-fold>
+
+-- <editor-fold> LOCAL IMPORTS
+
 import State exposing (..)
 import Vector exposing (..)
 import Segment exposing (Segment)
@@ -12,7 +22,11 @@ import Bounds exposing (..)
 import SegmentParticle exposing (segmentParticles)
 import Wrap
 
--- MODEL
+-- </editor-fold>
+
+-- </editor-fold>
+
+-- <editor-fold> MODEL
 
 type alias Model =
   { position : Vector
@@ -54,18 +68,22 @@ segments asteroid =
 segments' : Vector -> List Vector -> List Segment
 segments' firstPoint points =
   case points of
-    [] -> []
+    [] ->
+      []
+
     x::xs ->
       let
         next =
           case xs of
             [] -> firstPoint
             y::_ -> y
+
         segment =
           { a = x
           , b = next
           }
-      in segment :: segments' firstPoint xs
+      in
+        segment :: segments' firstPoint xs
 
 wrappedSegments : Model -> List Segment
 wrappedSegments =
@@ -74,7 +92,9 @@ wrappedSegments =
 split : Model -> State Seed (List Model, List SegmentParticle.Model)
 split asteroid =
   segmentParticles asteroid.velocity (segments asteroid) >>= \particles ->
-    let size = asteroid.size - 1
+    let
+      size =
+        asteroid.size - 1
     in
       if size > 0 then
         step (int 1 3) >>= split' asteroid.position size >>= \asteroids ->
@@ -90,11 +110,13 @@ split' position size count =
       <*> split' position size (count - 1)
 
 init : State Seed (List Model)
-init = step (int 2 3) >>= init' 4 5
+init =
+  step (int 2 3) >>= init' 4 5
 
 init' : Int -> Int -> Int -> State Seed (List Model)
 init' minSize maxSize count =
-  if count == 0 then return []
+  if count == 0 then
+    return []
   else
     (::)
       <$> initAsteroid Nothing minSize maxSize
@@ -165,20 +187,38 @@ initPoints' segAngleDelta minRadius maxRadius count =
           in
             ((::) point) <$> initPoints' segAngleDelta minRadius maxRadius (count - 1)
 
-tick : Float -> Model -> Model
-tick timeDelta = moveAsteroid timeDelta >> rotateAsteroid timeDelta
+-- </editor-fold>
+
+-- <editor-fold> UPDATE
+
+update : ExternalMsg -> Model -> (Maybe Model, Cmd ExternalMsg)
+update msg asteroid =
+  case msg of
+    Tick dt ->
+      let updatedAsteroid =
+        moveAsteroid dt asteroid |> rotateAsteroid dt
+
+      in
+        Just updatedAsteroid ! []
+
+    _ ->
+      Just asteroid ! []
 
 moveAsteroid : Float -> Model -> Model
-moveAsteroid timeDelta asteroid =
-  { asteroid | position =
-      add asteroid.position (mulS timeDelta asteroid.velocity) |> wrap
+moveAsteroid dt asteroid =
+  { asteroid
+  | position = add asteroid.position (mulS dt asteroid.velocity) |> wrap
   }
 
 rotateAsteroid : Float -> Model -> Model
-rotateAsteroid timeDelta asteroid =
-  { asteroid | rotation =
-      asteroid.rotation + asteroid.rotationVelocity * timeDelta
+rotateAsteroid dt asteroid =
+  { asteroid
+  | rotation = asteroid.rotation + asteroid.rotationVelocity * dt
   }
+
+-- </editor-fold>
+
+-- <editor-fold> VIEW
 
 draw : Model -> Form
 draw asteroid =
@@ -186,22 +226,28 @@ draw asteroid =
     |> absolutePoints
     |> wrapPoints
     |> map
-       (\points ->
-          let shape = points |> polygon
-          in
-            group
-              [ shape |> filled black
-              , shape |> outlined { defaultLine | color = white }
-              ])
+      (\points ->
+        let
+          shape =
+            points |> polygon
+        in
+          group
+            [ shape |> filled black
+            , shape |> outlined { defaultLine | color = white }
+            ])
     |> group
 
 wrapPoints : List Vector -> List (List Vector)
 wrapPoints =
-  let move o = map (add o)
+  let
+    move o =
+      map (add o)
   in
     Wrap.wrap
-          (\bound -> any (\(x, _) -> x < bound))
-          (\bound -> any (\(x, _) -> x > bound))
-          (\bound -> any (\(_, y) -> y > bound))
-          (\bound -> any (\(_, y) -> y < bound))
-          move
+      (\bound -> any (\(x, _) -> x < bound))
+      (\bound -> any (\(x, _) -> x > bound))
+      (\bound -> any (\(_, y) -> y > bound))
+      (\bound -> any (\(_, y) -> y < bound))
+      move
+
+-- </editor-fold>

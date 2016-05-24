@@ -347,11 +347,18 @@ update msg model =
 
 tickTitle : Time -> TitleState -> TitleState
 tickTitle dt titleState =
-  { titleState
-  | stars = List.map (Star.tick dt) titleState.stars
-  , asteroids = List.map (Asteroid.tick dt) titleState.asteroids
-  , stateTime = titleState.stateTime + dt
-  }
+  let
+    tickMsg =
+      Tick dt
+
+    (asteroids, asteroidCmd) =
+      updateGroup (Asteroid.update tickMsg) titleState.asteroids
+  in
+    { titleState
+    | stars = List.map (Star.tick dt) titleState.stars
+    , asteroids = asteroids
+    , stateTime = titleState.stateTime + dt
+    }
 
 tickPreGame : Time -> PreGameState -> Model
 tickPreGame dt preGameState =
@@ -362,10 +369,10 @@ tickPreGame dt preGameState =
     stars =
       List.map (Star.tick dt) preGameState.stars
 
-    asteroids =
-      List.map (Asteroid.tick dt) preGameState.asteroids
+    (asteroids, asteroidCmd) =
+      updateGroup (Asteroid.update tickMsg) preGameState.asteroids
 
-    (bullets, cmd) =
+    (bullets, bulletCmd) =
       updateGroup (Bullet.update tickMsg) preGameState.bullets
 
     ((asteroids', bullets', segmentParticles, _, _), randomSeed) =
@@ -409,10 +416,10 @@ tickGame dt gameState =
     player =
       Player.tick dt gameState.keyboard gameState.player
 
-    asteroids =
-      List.map (Asteroid.tick dt) gameState.asteroids
+    (asteroids, asteroidCmd) =
+      updateGroup (Asteroid.update tickMsg) gameState.asteroids
 
-    (bullets, cmd) =
+    (bullets, bulletCmd) =
       updateGroup (Bullet.update tickMsg) gameState.bullets
 
     (bullets', fireTime) =
@@ -543,10 +550,10 @@ tickGameOver dt gameOverState =
     stars =
       List.map (Star.tick dt) gameOverState.stars
 
-    asteroids =
-      List.map (Asteroid.tick dt) gameOverState.asteroids
+    (asteroids, asteroidCmd) =
+      updateGroup (Asteroid.update tickMsg) gameOverState.asteroids
 
-    (bullets, cmd) =
+    (bullets, bulletCmd) =
       updateGroup (Bullet.update tickMsg) gameOverState.bullets
 
     ((asteroids', bullets', segmentParticles, _, _), randomSeed) =
