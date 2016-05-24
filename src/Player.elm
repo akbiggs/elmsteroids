@@ -3,7 +3,8 @@ module Player exposing (Model, tick, draw)
 import Collage exposing (Form)
 import Vector exposing (..)
 import Ship
-import KeyStates exposing (KeyStates)
+import Time exposing (Time)
+import Keyboard.Extra as Keyboard
 
 -- MODEL
 
@@ -15,16 +16,16 @@ type alias Model =
 
 -- UPDATE
 
-tick : Float -> KeyStates -> Model -> Model
-tick timeDelta keys player =
+tick : Time -> Keyboard.Model -> Model -> Model
+tick timeDelta keyboard player =
   let
     position =
       add player.position (mulS timeDelta player.velocity)
       |> wrap
 
     accel = 57.0
-    upAccel = if keys.up then accel else 0
-    downAccel = if keys.down then -accel else 0
+    upAccel = if Keyboard.isPressed Keyboard.ArrowUp keyboard then accel else 0
+    downAccel = if Keyboard.isPressed Keyboard.ArrowDown keyboard then -accel else 0
     velocityDelta = upAccel + downAccel
     velocity =
       (0, velocityDelta * timeDelta)
@@ -32,8 +33,8 @@ tick timeDelta keys player =
       |> add player.velocity
 
     rotationSpeed = 1.5
-    leftDelta = if keys.left then -rotationSpeed else 0
-    rightDelta = if keys.right then rotationSpeed else 0
+    leftDelta = if Keyboard.isPressed Keyboard.ArrowLeft keyboard then -rotationSpeed else 0
+    rightDelta = if Keyboard.isPressed Keyboard.ArrowRight keyboard then rotationSpeed else 0
     rotationDelta = leftDelta + rightDelta
     rotation = player.rotation + rotationDelta * timeDelta
 

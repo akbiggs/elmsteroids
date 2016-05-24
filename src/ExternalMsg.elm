@@ -3,7 +3,7 @@ module ExternalMsg exposing (..)
 -- <editor-fold> IMPORTS
 
 import Time exposing (Time)
-import Keyboard exposing (KeyCode)
+import Keyboard.Extra as Keyboard
 
 -- </editor-fold>
 
@@ -11,10 +11,7 @@ import Keyboard exposing (KeyCode)
 
 type ExternalMsg
   = Tick Time
-  | KeyPressed KeyCode
-  | KeyDown KeyCode
-  | KeyReleased KeyCode
-  | KeyUp KeyCode
+  | KeyboardUpdate Keyboard.Msg
   | PlaySound String
 
 -- </editor-fold>
