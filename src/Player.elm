@@ -13,6 +13,8 @@ type alias Model =
   , rotation : Float
   }
 
+-- UPDATE
+
 tick : Float -> KeyStates -> Model -> Model
 tick timeDelta keys player =
   let

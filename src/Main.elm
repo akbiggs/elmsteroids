@@ -20,8 +20,9 @@ import KeyStates exposing (KeyStates)
 import Ship
 import Collisions exposing (..)
 import Hud
-import DrawUtilities exposing (..)
+import ComponentCollectionUtils exposing (..)
 import Keys
+import ExternalMsg exposing (..)
 
 
 -- <editor-fold> PROGRAM
@@ -273,9 +274,12 @@ tickTitle timeDelta titleState =
 tickPreGame : Float -> PreGameState -> Model
 tickPreGame timeDelta preGameState =
   let
+    tickMsg =
+      ExternalMsg.Tick timeDelta
     stars = List.map (Star.tick timeDelta) preGameState.stars
     asteroids = List.map (Asteroid.tick timeDelta) preGameState.asteroids
-    bullets = List.filterMap (Bullet.update (Bullet.Tick timeDelta) >> fst) preGameState.bullets
+    (bullets, cmd) =
+      updateGroup (Bullet.update tickMsg) preGameState.bullets
 
     ((asteroids', bullets', segmentParticles, _, _), randomSeed) =
       collide
@@ -311,10 +315,21 @@ tickPreGame timeDelta preGameState =
 tickGame : Float -> GameState -> Model
 tickGame timeDelta gameState =
   let
-    stars = List.map (Star.tick timeDelta) gameState.stars
-    player = Player.tick timeDelta gameState.keys gameState.player
-    asteroids = List.map (Asteroid.tick timeDelta) gameState.asteroids
-    bullets = List.filterMap (Bullet.update (Bullet.Tick timeDelta) >> fst) gameState.bullets
+    tickMsg =
+      ExternalMsg.Tick timeDelta
+
+    stars =
+      List.map (Star.tick timeDelta) gameState.stars
+
+    player =
+      Player.tick timeDelta gameState.keys gameState.player
+
+    asteroids =
+      List.map (Asteroid.tick timeDelta) gameState.asteroids
+
+    (bullets, cmd) =
+      updateGroup (Bullet.update tickMsg) gameState.bullets
+
     (bullets', fireTime) =
       if gameState.keys.space && gameState.fireTime >= 0 then
         (Bullet.fire gameState.player bullets, -0.3)
@@ -384,9 +399,14 @@ tickGame timeDelta gameState =
 tickPostGame : Float -> PostGameState -> Model
 tickPostGame timeDelta postGameState =
   let
+    tickMsg =
+      ExternalMsg.Tick timeDelta
+
     stars = List.map (Star.tick timeDelta) postGameState.stars
     player = Player.tick timeDelta postGameState.keys postGameState.player
-    bullets = List.filterMap (Bullet.update (Bullet.Tick timeDelta) >> fst) postGameState.bullets
+    (bullets, cmd) =
+      updateGroup (Bullet.update tickMsg) postGameState.bullets
+
     segmentParticles = List.filterMap (SegmentParticle.tick timeDelta) postGameState.segmentParticles
   in
     if postGameState.stateTime >= postGameLength then
@@ -412,12 +432,16 @@ tickPostGame timeDelta postGameState =
           , stateTime = postGameState.stateTime + timeDelta
         }
 
-tickGameOver : Float -> GameOverState -> Model
+tickGameOver : Time -> GameOverState -> Model
 tickGameOver timeDelta gameOverState =
   let
+    tickMsg =
+      ExternalMsg.Tick timeDelta
+
     stars = List.map (Star.tick timeDelta) gameOverState.stars
     asteroids = List.map (Asteroid.tick timeDelta) gameOverState.asteroids
-    bullets = List.filterMap (Bullet.update (Bullet.Tick timeDelta) >> fst) gameOverState.bullets
+    (bullets, cmd) =
+      updateGroup (Bullet.update tickMsg) gameOverState.bullets
 
     ((asteroids', bullets', segmentParticles, _, _), randomSeed) =
       collide

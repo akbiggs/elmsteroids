@@ -1,4 +1,4 @@
-module Bullet exposing (Model, Msg(..), fire, update, draw)
+module Bullet exposing (Model, fire, update, draw)
 
 -- IMPORTS
 
@@ -10,6 +10,7 @@ import Ship
 import Player
 import AnimationFrame
 import Time exposing (Time)
+import ExternalMsg exposing (..)
 
 -- MODEL
 
@@ -29,14 +30,14 @@ fire player bullets =
 
 -- UPDATE
 
-type Msg
-  = Tick Time
-
-update : Msg -> Model -> (Maybe Model, Cmd Msg)
+update : ExternalMsg -> Model -> (Maybe Model, Cmd ExternalMsg)
 update msg bullet =
   case msg of
     Tick dt ->
       (moveBullet dt >> killBullet dt) bullet ! []
+
+    _ ->
+      Just bullet ! []
 
 moveBullet : Time -> Model -> Model
 moveBullet timeDelta bullet =
@@ -51,12 +52,6 @@ killBullet timeDelta bullet =
     if timeUntilDeath > 0 then
       Just { bullet | timeUntilDeath = timeUntilDeath }
     else Nothing
-
--- SUBSCRIPTIONS
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-  AnimationFrame.diffs Tick
 
 -- VIEW
 
