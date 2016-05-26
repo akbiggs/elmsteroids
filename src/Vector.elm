@@ -1,4 +1,4 @@
-module Vector exposing (Vector, init, length, normalize, add, sub, mul, div, mulS, divS, dot, cross, rotate, wrap)
+module Vector exposing (Vector, init, zero, length, normalize, add, sub, mul, div, mulS, divS, dot, cross, rotate, wrap)
 
 import Bounds exposing (..)
 
@@ -6,6 +6,9 @@ type alias Vector = (Float, Float)
 
 init : Float -> Float -> Vector
 init x y = (x, y)
+
+zero : Vector
+zero = (0, 0)
 
 length : Vector -> Float
 length vector =

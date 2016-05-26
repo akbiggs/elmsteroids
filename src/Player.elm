@@ -1,49 +1,106 @@
 module Player exposing (Model, tick, draw)
 
-import Collage exposing (Form)
-import Vector exposing (..)
-import Ship
-import Time exposing (Time)
-import Keyboard.Extra as Keyboard
+-- <editor-fold> IMPORTS
 
--- MODEL
+-- EXTERNAL IMPORTS
+
+import Collage exposing (Form)
+import Keyboard.Extra as Keyboard
+import Time exposing (Time)
+
+-- LOCAL IMPORTS
+
+import Vector
+import Ship
+
+-- </editor-fold>
+
+-- <editor-fold> MODEL
 
 type alias Model =
   { position : Vector
   , velocity : Vector
+  , velocityDelta : Float
   , rotation : Float
+  , rotationDelta : Float
   }
 
--- UPDATE
+init : Vector -> (Model, Cmd Msg)
+init pos =
+  { position = pos
+  , velocity = Vector.zero
+  , velocityDelta = 0
+  , rotation = 0
+  , rotationDelta = 0
+  }
 
-tick : Time -> Keyboard.Model -> Model -> Model
-tick timeDelta keyboard player =
-  let
-    position =
-      add player.position (mulS timeDelta player.velocity)
-      |> wrap
+-- </editor-fold>
 
-    accel = 57.0
-    upAccel = if Keyboard.isPressed Keyboard.ArrowUp keyboard then accel else 0
-    downAccel = if Keyboard.isPressed Keyboard.ArrowDown keyboard then -accel else 0
-    velocityDelta = upAccel + downAccel
-    velocity =
-      (0, velocityDelta * timeDelta)
-      |> rotate player.rotation
-      |> add player.velocity
+-- <editor-fold> UPDATE
 
-    rotationSpeed = 1.5
-    leftDelta = if Keyboard.isPressed Keyboard.ArrowLeft keyboard then -rotationSpeed else 0
-    rightDelta = if Keyboard.isPressed Keyboard.ArrowRight keyboard then rotationSpeed else 0
-    rotationDelta = leftDelta + rightDelta
-    rotation = player.rotation + rotationDelta * timeDelta
+type Msg
+  = SecondsElapsed Float
+  | Accelerate
+  | Decelerate
+  | RotateLeft
+  | RotateRight
 
-  in
-    { player
-      | position = position
-      , velocity = velocity
-      , rotation = rotation
-    }
+accel : Float
+accel = 57.0
+
+rotationSpeed : Float
+rotationSpeed = 1.5
+
+update : Msg -> Model -> (Maybe Model, Cmd Msg)
+update msg player =
+  case msg of
+    SecondsElapsed dt ->
+      let
+        position =
+          add player.position (mulS dt player.velocity)
+          |> wrap
+
+        velocity =
+          (0, player.velocityDelta * dt)
+          |> rotate player.rotation
+          |> add player.velocity
+
+        rotation =
+          player.rotation + player.rotationDelta * dt
+      in
+        { player
+        | position = position,
+        , velocity = velocity,
+        , velocityDelta = 0,
+        , rotation = rotation
+        , rotationDelta = 0
+        }
+
+    Accelerate ->
+      { player
+      | velocityDelta = player.velocityDelta + accel
+      }
+
+    Decelerate ->
+      { player
+      | velocityDelta = player.velocityDelta - accel
+      }
+
+    RotateLeft ->
+      { player
+      | rotationDelta = player.rotationDelta - rotationSpeed
+      }
+
+    RotateRight ->
+      { player
+      | rotationDelta = player.rotationDelta + rotationSpeed
+      }
+
+-- </editor-fold>
+
+-- <editor-fold> VIEW
 
 draw : Model -> Form
 draw player = Ship.draw player.position player.rotation
+
+-- </editor-fold>
