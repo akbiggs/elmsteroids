@@ -1,4 +1,4 @@
-module Asteroid exposing (Model, liesInside, wrappedSegments, split, init, update, draw)
+module Asteroid exposing (Model, AsteroidSize, Msg(..), update, draw, liesInside, wrappedSegments)
 
 -- <editor-fold> IMPORTS
 
@@ -8,7 +8,7 @@ import List exposing (map, concatMap, any)
 import Collage exposing (Form, group, polygon, filled, outlined, defaultLine)
 import Color exposing (..)
 import Random exposing (Seed, int, float, step)
-import ExternalMsg exposing (..)
+import Time exposing (Time)
 
 -- </editor-fold>
 
@@ -18,8 +18,9 @@ import State exposing (..)
 import Vector exposing (..)
 import Segment exposing (Segment)
 import Triangle exposing (Triangle)
-import Bounds exposing (..)
+import Bounds
 import SegmentParticle exposing (segmentParticles)
+import ObjectMsg exposing (..)
 import Wrap
 
 -- </editor-fold>
@@ -28,12 +29,17 @@ import Wrap
 
 -- <editor-fold> MODEL
 
+type alias AsteroidSize =
+  ( Int   -- scale
+  , Float -- radius
+  )
+
 type alias Model =
   { position : Vector
   , velocity : Vector
   , rotation : Float
   , rotationVelocity : Float
-  , size : Int
+  , scale : Int
   , points : List Vector
   }
 
@@ -44,7 +50,9 @@ absolutePoints asteroid =
 
 liesInside : Vector -> Model -> Bool
 liesInside point =
-  triangles >> concatMap Triangle.wrap >> any (Triangle.liesInside point)
+  triangles
+    >> concatMap Triangle.wrap
+    >> any (Triangle.liesInside point)
 
 triangles : Model -> List Triangle
 triangles asteroid =
@@ -59,11 +67,16 @@ triangles asteroid =
 
 segments : Model -> List Segment
 segments asteroid =
-  let points = absolutePoints asteroid
+  let
+    points =
+      absolutePoints asteroid
   in
     case points of
-      [] -> []
-      x::_ -> segments' x points
+      [] ->
+        []
+
+      x::_ ->
+        segments' x points
 
 segments' : Vector -> List Vector -> List Segment
 segments' firstPoint points =
@@ -75,8 +88,11 @@ segments' firstPoint points =
       let
         next =
           case xs of
-            [] -> firstPoint
-            y::_ -> y
+            [] ->
+              firstPoint
+
+            y::_ ->
+              y
 
         segment =
           { a = x
@@ -89,120 +105,32 @@ wrappedSegments : Model -> List Segment
 wrappedSegments =
   segments >> concatMap Segment.wrap
 
-split : Model -> State Seed (List Model, List SegmentParticle.Model)
-split asteroid =
-  segmentParticles asteroid.velocity (segments asteroid) >>= \particles ->
-    let
-      size =
-        asteroid.size - 1
-    in
-      if size > 0 then
-        step (int 1 3) >>= split' asteroid.position size >>= \asteroids ->
-          return (asteroids, particles)
-      else return ([], particles)
-
-split' : Vector -> Int -> Int -> State Seed (List Model)
-split' position size count =
-  if count == 0 then return []
-  else
-    (::)
-      <$> initAsteroid (Just position) size size
-      <*> split' position size (count - 1)
-
-init : State Seed (List Model)
-init =
-  step (int 2 3) >>= init' 4 5
-
-init' : Int -> Int -> Int -> State Seed (List Model)
-init' minSize maxSize count =
-  if count == 0 then
-    return []
-  else
-    (::)
-      <$> initAsteroid Nothing minSize maxSize
-      <*> init' minSize maxSize (count - 1)
-
-initAsteroid : Maybe Vector -> Int -> Int -> State Seed Model
-initAsteroid spawnPos minSize maxSize =
-  let
-    angle = float 0 (pi * 2) |> step
-    radiusGen size =
-      let
-        idealRadius = toFloat size * 16.0
-        minRadius = idealRadius * 0.95
-        maxRadius = idealRadius * 1.05
-      in float minRadius maxRadius
-  in
-    step (int minSize maxSize) >>= \size ->
-      angle >>= \velDirection ->
-        step (float 60 (180 / toFloat (size ^ 2))) >>= \velMagnitude ->
-          angle >>= \rotation ->
-            step (float -0.5 0.5) >>= \rotationVelocity ->
-              step (radiusGen size) >>= \radius ->
-                (case spawnPos of
-                   Just pos -> return pos
-                   _ ->
-                     step (float left right) >>= \x ->
-                       step (float bottom top) >>= \y ->
-                         let
-                           p = (x, y)
-                           safeZoneSize' = safeZoneSize + radius
-                         in
-                           return
-                             (if length p < safeZoneSize' then
-                                p |> normalize |> mulS safeZoneSize'
-                              else p)) >>= \position ->
-                  let
-                    minRadius = radius * 0.8
-                    maxRadius = radius * 1.2
-                  in
-                    initPoints minRadius maxRadius >>= \points ->
-                      return
-                        { position = position
-                        , velocity = rotate velDirection (0, velMagnitude)
-                        , rotation = rotation
-                        , rotationVelocity = rotationVelocity
-                        , size = size
-                        , points = points
-                        }
-
-initPoints : Float -> Float -> State Seed (List Vector)
-initPoints minRadius maxRadius =
-  step (int 10 16) >>= \count ->
-    initPoints' (pi * 2.0 / (toFloat count)) minRadius maxRadius count
-
-initPoints' : Float -> Float -> Float -> Int -> State Seed (List Vector)
-initPoints' segAngleDelta minRadius maxRadius count =
-  if count == 0 then return []
-  else
-    let angleOffset = toFloat count * segAngleDelta
-    in
-      step (float (-segAngleDelta * 0.3) (segAngleDelta * 0.3)) >>= \angle ->
-        step (float minRadius maxRadius) >>= \radius' ->
-          let
-            angle' = angle + angleOffset
-            x = cos angle' * radius'
-            y = sin angle' * radius'
-            point = (x, y)
-          in
-            ((::) point) <$> initPoints' segAngleDelta minRadius maxRadius (count - 1)
+-- split : Model -> State Seed (List Model, List SegmentParticle.Model)
+-- split asteroid =
+--   segmentParticles asteroid.velocity (segments asteroid) >>= \particles ->
+--     let
+--       scale =
+--         asteroid.scale - 1
+--     in
+--       if size > 0 then
+--         Random.step (Random.int 1 3) >>=
+--           split' asteroid.position scale >>= \asteroids ->
+--             return (asteroids, particles)
+--       else
+--         return ([], particles)
 
 -- </editor-fold>
 
 -- <editor-fold> UPDATE
 
-update : ExternalMsg -> Model -> (Maybe Model, Cmd ExternalMsg)
+type Msg
+  = SecondsElapsed Time
+
+update : Msg -> Model -> (Maybe Model, Cmd ObjectMsg)
 update msg asteroid =
   case msg of
-    Tick dt ->
-      let updatedAsteroid =
-        moveAsteroid dt asteroid |> rotateAsteroid dt
-
-      in
-        Just updatedAsteroid ! []
-
-    _ ->
-      Just asteroid ! []
+    SecondsElapsed dt ->
+      Just (moveAsteroid dt asteroid |> rotateAsteroid dt) ! []
 
 moveAsteroid : Float -> Model -> Model
 moveAsteroid dt asteroid =

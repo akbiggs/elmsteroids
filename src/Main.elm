@@ -21,8 +21,7 @@ import SegmentParticle
 import Ship
 import Collisions exposing (..)
 import Hud
-import ComponentCollectionUtils exposing (..)
-import ExternalMsg exposing (..)
+import CollectionUtils exposing (..)
 
 -- </editor-fold>
 
