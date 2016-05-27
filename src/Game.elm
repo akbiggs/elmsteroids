@@ -16,12 +16,14 @@ import Color
 
 -- LOCAL IMPORTS
 
-import CollectionUtils exposing (..)
+import ComponentUtils exposing (..)
 import Bullet
 import AsteroidRandom
 import Asteroid
 import ObjectMsg exposing (ObjectMsg)
 import Bounds
+import Player
+import Vector
 
 -- </editor-fold>
 
@@ -52,6 +54,7 @@ type alias Model =
   , keyboard : Keyboard.Model
   , bullets : List Bullet.Model
   , asteroids : List Asteroid.Model
+  , player : Maybe Player.Model
   }
 
 init : (Model, Cmd Msg)
@@ -60,15 +63,20 @@ init =
     (keyboard, keyboardCmd) =
       Keyboard.init
 
+    (player, playerCmd) =
+      Player.init Vector.zero
+
     cmds =
-      [ Cmd.map KeyboardMsg keyboardCmd
-      , Random.generate SpawnAsteroids AsteroidRandom.asteroidGroup
+      [ Random.generate SpawnAsteroids AsteroidRandom.asteroidGroup
+      , Cmd.map KeyboardMsg keyboardCmd
+      , Cmd.map processPlayerEffect playerCmd
       ]
   in
     { state = Title
     , keyboard = keyboard
     , bullets = []
     , asteroids = []
+    , player = Just player
     } ! cmds
 
 -- </editor-fold>
@@ -82,7 +90,7 @@ type Msg
   | SpawnAsteroids (List Asteroid.Model)
 
 update : Msg -> Model -> (Model, Cmd Msg)
-update msg model =
+update msg game =
   case msg of
     Tick dt ->
       let
@@ -92,42 +100,70 @@ update msg model =
         (bullets, bulletCmd) =
           updateGroup
             (Bullet.update (Bullet.SecondsElapsed dtSeconds))
-            model.bullets
+            game.bullets
 
         (asteroids, asteroidCmd) =
           updateGroup
             (Asteroid.update (Asteroid.SecondsElapsed dtSeconds))
-            model.asteroids
+            game.asteroids
+
+        (player, playerCmd) =
+          updateMaybe
+            (Player.update (Player.SecondsElapsed dtSeconds))
+            game.player
 
         cmds =
           [ Cmd.map processObjectMsg bulletCmd
           , Cmd.map processObjectMsg asteroidCmd
+          , Cmd.map processPlayerEffect playerCmd
           ]
       in
-        { model
+        { game
         | bullets = bullets
         , asteroids = asteroids
+        , player = player
         } ! cmds
 
     KeyboardMsg keyMsg ->
       let
         (keyboard, keyboardCmd) =
-          Keyboard.update keyMsg model.keyboard
+          Keyboard.update keyMsg game.keyboard
+
+        (player, playerCmd) =
+          updateMaybe
+            (foldlUpdates
+              [ updateIf
+                  (Keyboard.isPressed Keyboard.ArrowUp game.keyboard)
+                  (Player.update (Player.Accelerate))
+              , updateIf
+                  (Keyboard.isPressed Keyboard.ArrowDown game.keyboard)
+                  (Player.update (Player.Decelerate))
+              , updateIf
+                  (Keyboard.isPressed Keyboard.ArrowLeft game.keyboard)
+                  (Player.update (Player.RotateLeft))
+              , updateIf
+                  (Keyboard.isPressed Keyboard.ArrowRight game.keyboard)
+                  (Player.update (Player.RotateRight))
+              ]
+            )
+            game.player
 
         cmds =
           [ Cmd.map KeyboardMsg keyboardCmd
+          , Cmd.map processPlayerEffect playerCmd
           ]
       in
-        { model
+        { game
         | keyboard = keyboard
+        , player = player
         } ! cmds
 
     PlaySound filename ->
-      model ! [] -- TODO
+      game ! [] -- TODO
 
     SpawnAsteroids asteroids ->
-      { model
-      | asteroids = model.asteroids ++ asteroids
+      { game
+      | asteroids = game.asteroids ++ asteroids
       } ! []
 
 processObjectMsg : ObjectMsg -> Msg
@@ -136,12 +172,18 @@ processObjectMsg msg =
     ObjectMsg.PlaySound filename ->
       PlaySound filename
 
+processPlayerEffect : Player.Effect -> Msg
+processPlayerEffect msg =
+  case msg of
+    Player.PlaySound filename ->
+      PlaySound filename
+
 -- </editor-fold>
 
 -- <editor-fold> SUBSCRIPTIONS
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions game =
   Sub.batch
     [ AnimationFrame.diffs Tick
     , Sub.map KeyboardMsg Keyboard.subscriptions
@@ -152,12 +194,13 @@ subscriptions model =
 -- <editor-fold> VIEW
 
 view : Model -> Html Msg
-view model =
+view game =
   let
     scene =
       Collage.group
-        [ drawGroup Asteroid.draw model.asteroids
-        , drawGroup Bullet.draw model.bullets
+        [ drawGroup Asteroid.draw game.asteroids
+        , drawMaybe Player.draw game.player
+        , drawGroup Bullet.draw game.bullets
         ]
   in
     Collage.collage

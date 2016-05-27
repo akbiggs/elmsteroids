@@ -1,4 +1,4 @@
-module Player exposing (Model, tick, draw)
+module Player exposing (Model, Msg(..), Effect(..), init, update, draw)
 
 -- <editor-fold> IMPORTS
 
@@ -10,7 +10,7 @@ import Time exposing (Time)
 
 -- LOCAL IMPORTS
 
-import Vector
+import Vector exposing (Vector)
 import Ship
 
 -- </editor-fold>
@@ -25,14 +25,14 @@ type alias Model =
   , rotationDelta : Float
   }
 
-init : Vector -> (Model, Cmd Msg)
+init : Vector -> (Model, Cmd Effect)
 init pos =
   { position = pos
   , velocity = Vector.zero
   , velocityDelta = 0
   , rotation = 0
   , rotationDelta = 0
-  }
+  } ! []
 
 -- </editor-fold>
 
@@ -45,56 +45,64 @@ type Msg
   | RotateLeft
   | RotateRight
 
+type Effect
+  = PlaySound String
+
 accel : Float
 accel = 57.0
 
 rotationSpeed : Float
 rotationSpeed = 1.5
 
-update : Msg -> Model -> (Maybe Model, Cmd Msg)
+update : Msg -> Model -> (Maybe Model, Cmd Effect)
 update msg player =
   case msg of
     SecondsElapsed dt ->
       let
         position =
-          add player.position (mulS dt player.velocity)
-          |> wrap
+          Vector.add player.position (Vector.mulS dt player.velocity)
+          |> Vector.wrap
 
         velocity =
           (0, player.velocityDelta * dt)
-          |> rotate player.rotation
-          |> add player.velocity
+          |> Vector.rotate player.rotation
+          |> Vector.add player.velocity
 
         rotation =
           player.rotation + player.rotationDelta * dt
       in
-        { player
-        | position = position,
-        , velocity = velocity,
-        , velocityDelta = 0,
-        , rotation = rotation
-        , rotationDelta = 0
-        }
+        Just
+          { player
+          | position = position
+          , velocity = velocity
+          , velocityDelta = 0
+          , rotation = rotation
+          , rotationDelta = 0
+          } ! []
 
     Accelerate ->
-      { player
-      | velocityDelta = player.velocityDelta + accel
-      }
+      Just
+        { player
+        | velocityDelta = player.velocityDelta + accel
+        } ! []
 
     Decelerate ->
-      { player
-      | velocityDelta = player.velocityDelta - accel
-      }
+      Just
+        { player
+        | velocityDelta = player.velocityDelta - accel
+        } ! []
 
     RotateLeft ->
-      { player
-      | rotationDelta = player.rotationDelta - rotationSpeed
-      }
+      Just
+        { player
+        | rotationDelta = -rotationSpeed
+        } ! []
 
     RotateRight ->
-      { player
-      | rotationDelta = player.rotationDelta + rotationSpeed
-      }
+      Just
+        { player
+        | rotationDelta = rotationSpeed
+        } ! []
 
 -- </editor-fold>
 

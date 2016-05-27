@@ -22,7 +22,8 @@ asteroidGroup =
 
 asteroid : Generator Asteroid.Model
 asteroid =
-  size 4 5 `andThen` asteroidWithSize
+  size 4 5
+    `andThen` asteroidWithSize
 
 asteroidWithSize : AsteroidSize -> Generator Asteroid.Model
 asteroidWithSize ((scale, radius) as size) =
