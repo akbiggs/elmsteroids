@@ -109,7 +109,22 @@ update msg game =
 
         (player, playerCmd) =
           updateMaybe
-            (Player.update (Player.SecondsElapsed dtSeconds))
+            (foldlUpdates
+              [ updateIf
+                  (Keyboard.isPressed Keyboard.ArrowUp game.keyboard)
+                  (Player.update (Player.Accelerate))
+              , updateIf
+                  (Keyboard.isPressed Keyboard.ArrowDown game.keyboard)
+                  (Player.update (Player.Decelerate))
+              , updateIf
+                  (Keyboard.isPressed Keyboard.ArrowLeft game.keyboard)
+                  (Player.update (Player.RotateLeft))
+              , updateIf
+                  (Keyboard.isPressed Keyboard.ArrowRight game.keyboard)
+                  (Player.update (Player.RotateRight))
+              , Player.update (Player.SecondsElapsed dtSeconds)
+              ]
+            )
             game.player
 
         cmds =
@@ -129,33 +144,12 @@ update msg game =
         (keyboard, keyboardCmd) =
           Keyboard.update keyMsg game.keyboard
 
-        (player, playerCmd) =
-          updateMaybe
-            (foldlUpdates
-              [ updateIf
-                  (Keyboard.isPressed Keyboard.ArrowUp game.keyboard)
-                  (Player.update (Player.Accelerate))
-              , updateIf
-                  (Keyboard.isPressed Keyboard.ArrowDown game.keyboard)
-                  (Player.update (Player.Decelerate))
-              , updateIf
-                  (Keyboard.isPressed Keyboard.ArrowLeft game.keyboard)
-                  (Player.update (Player.RotateLeft))
-              , updateIf
-                  (Keyboard.isPressed Keyboard.ArrowRight game.keyboard)
-                  (Player.update (Player.RotateRight))
-              ]
-            )
-            game.player
-
         cmds =
           [ Cmd.map KeyboardMsg keyboardCmd
-          , Cmd.map processPlayerEffect playerCmd
           ]
       in
         { game
         | keyboard = keyboard
-        , player = player
         } ! cmds
 
     PlaySound filename ->
