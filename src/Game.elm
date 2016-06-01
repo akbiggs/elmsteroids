@@ -97,12 +97,12 @@ update msg game =
         dtSeconds =
           Time.inSeconds dt
 
-        (bullets, bulletCmd) =
+        (bullets, _) =
           updateGroup
             (Bullet.update (Bullet.SecondsElapsed dtSeconds))
             game.bullets
 
-        (asteroids, asteroidCmd) =
+        (asteroids, _) =
           updateGroup
             (Asteroid.update (Asteroid.SecondsElapsed dtSeconds))
             game.asteroids
@@ -112,25 +112,26 @@ update msg game =
             (foldlUpdates
               [ updateIf
                   (Keyboard.isPressed Keyboard.ArrowUp game.keyboard)
-                  (Player.update (Player.Accelerate))
+                  (Player.update Player.Accelerate)
               , updateIf
                   (Keyboard.isPressed Keyboard.ArrowDown game.keyboard)
-                  (Player.update (Player.Decelerate))
+                  (Player.update Player.Decelerate)
               , updateIf
                   (Keyboard.isPressed Keyboard.ArrowLeft game.keyboard)
-                  (Player.update (Player.RotateLeft))
+                  (Player.update Player.RotateLeft)
               , updateIf
                   (Keyboard.isPressed Keyboard.ArrowRight game.keyboard)
-                  (Player.update (Player.RotateRight))
+                  (Player.update Player.RotateRight)
+              , updateIf
+                  (Keyboard.isPressed Keyboard.Space game.keyboard)
+                  (Player.update Player.FireBullet)
               , Player.update (Player.SecondsElapsed dtSeconds)
               ]
             )
             game.player
 
         cmds =
-          [ Cmd.map processObjectMsg bulletCmd
-          , Cmd.map processObjectMsg asteroidCmd
-          , Cmd.map processPlayerEffect playerCmd
+          [ Cmd.map processPlayerEffect playerCmd
           ]
       in
         { game
@@ -160,15 +161,12 @@ update msg game =
       | asteroids = game.asteroids ++ asteroids
       } ! []
 
-processObjectMsg : ObjectMsg -> Msg
-processObjectMsg msg =
-  case msg of
-    ObjectMsg.PlaySound filename ->
-      PlaySound filename
+dropUnusedCmd : Cmd () -> Cmd Msg
+dropUnusedCmd _ = Cmd.none
 
 processPlayerEffect : Player.Effect -> Msg
-processPlayerEffect msg =
-  case msg of
+processPlayerEffect effect =
+  case effect of
     Player.PlaySound filename ->
       PlaySound filename
 

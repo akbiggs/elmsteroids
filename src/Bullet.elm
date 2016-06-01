@@ -2,28 +2,20 @@ module Bullet exposing (Model, Msg(..), fire, update, draw)
 
 -- <editor-fold> IMPORTS
 
--- <editor-fold> EXTERNAL IMPORTS
+-- EXTERNAL IMPORTS
 
 import List exposing (..)
 import Collage exposing (Form, group, rect, filled, move, alpha)
 import Color exposing (..)
 import Vector exposing (..)
-
--- </editor-fold>
-
--- <editor-fold> LOCAL IMPORTS
-
-import Ship
-import Player
 import AnimationFrame
 import Time exposing (Time)
-import ObjectMsg exposing (..)
+
+-- LOCAL IMPORTS
 
 -- </editor-fold>
 
--- </editor-fold>
-
--- MODEL
+-- <editor-fold> MODEL
 
 type alias Model =
   { position : Vector
@@ -31,23 +23,32 @@ type alias Model =
   , timeUntilDeath : Float
   }
 
-fire : Player.Model -> List Model -> List Model
-fire player bullets =
-  { position = Ship.front player.position player.rotation
-  , velocity = player.velocity |> add (rotate player.rotation (0, 80))
-  , timeUntilDeath = 3.0
-  } :: bullets
+init : Vector -> Vector -> Float -> Model
+init pos vel timeUntilDeath =
+  { position = pos
+  , velocity = vel
+  , timeUntilDeath = timeUntilDeath
+  }
 
--- UPDATE
+-- </editor-fold>
 
-type Msg
+-- <editor-fold> UPDATE
+
+type Action
   = SecondsElapsed Time
 
-update : Msg -> Model -> (Maybe Model, Cmd ObjectMsg)
+type alias Effect =
+  ()
+
+update : Action -> Model -> (Maybe Model, List Effect)
 update msg bullet =
   case msg of
     SecondsElapsed dt ->
-      (moveBullet dt >> killBullet dt) bullet ! []
+      let
+        updatedBullet =
+          ((moveBullet dt >> killBullet dt) bullet)
+      in
+        (updatedBullet, [])
 
 moveBullet : Time -> Model -> Model
 moveBullet timeDelta bullet =
@@ -66,7 +67,9 @@ killBullet timeDelta bullet =
     else
       Nothing
 
--- VIEW
+-- </editor-fold>
+
+-- <editor-fold> VIEW
 
 draw : Model -> Form
 draw bullet =
@@ -74,3 +77,5 @@ draw bullet =
     |> filled white
     |> move bullet.position
     |> alpha (min bullet.timeUntilDeath 1)
+
+-- </editor-fold>

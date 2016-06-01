@@ -44,9 +44,14 @@ foldlUpdates updateFns obj =
 updateGroup : (a -> (Maybe a, Cmd b)) -> List a -> (List a, Cmd b)
 updateGroup updateFn xs =
   let
-    (updatedObjects, effects) = map updateFn xs |> unzip
-    aliveObjects = filterMap identity updatedObjects
-    batchedEffect = Cmd.batch effects
+    (updatedObjects, effects) =
+      map updateFn xs |> unzip
+
+    aliveObjects =
+      filterMap identity updatedObjects
+
+    batchedEffect =
+      Cmd.batch effects
   in
     (aliveObjects, batchedEffect)
 

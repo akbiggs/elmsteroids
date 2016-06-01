@@ -123,14 +123,21 @@ wrappedSegments =
 
 -- <editor-fold> UPDATE
 
-type Msg
+type Action
   = SecondsElapsed Time
 
-update : Msg -> Model -> (Maybe Model, Cmd ObjectMsg)
+type alias Effect =
+  ()
+
+update : Action -> Model -> (Maybe Model, List Effect)
 update msg asteroid =
   case msg of
     SecondsElapsed dt ->
-      Just (moveAsteroid dt asteroid |> rotateAsteroid dt) ! []
+      let
+        updatedAsteroid =
+          Just (moveAsteroid dt asteroid |> rotateAsteroid dt)
+      in
+        (updatedAsteroid, [])
 
 moveAsteroid : Float -> Model -> Model
 moveAsteroid dt asteroid =

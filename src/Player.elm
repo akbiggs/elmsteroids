@@ -12,6 +12,7 @@ import Time exposing (Time)
 
 import Vector exposing (Vector)
 import Ship
+import Bullet
 
 -- </editor-fold>
 
@@ -34,27 +35,29 @@ init pos =
   , rotationDelta = 0
   } ! []
 
--- </editor-fold>
-
--- <editor-fold> UPDATE
-
-type Msg
-  = SecondsElapsed Float
-  | Accelerate
-  | Decelerate
-  | RotateLeft
-  | RotateRight
-
-type Effect
-  = PlaySound String
-
 accel : Float
 accel = 57.0
 
 rotationSpeed : Float
 rotationSpeed = 1.5
 
-update : Msg -> Model -> (Maybe Model, Cmd Effect)
+-- </editor-fold>
+
+-- <editor-fold> UPDATE
+
+type Action
+  = SecondsElapsed Float
+  | Accelerate
+  | Decelerate
+  | RotateLeft
+  | RotateRight
+  | FireBullet
+
+type Effect
+  = PlaySound String
+  | SpawnBullet Bullet.Model
+
+update : Action -> Model -> (Maybe Model, List Effect)
 update msg player =
   case msg of
     SecondsElapsed dt ->
@@ -103,6 +106,20 @@ update msg player =
         { player
         | rotationDelta = rotationSpeed
         } ! []
+
+    FireBullet ->
+      let
+        bullet =
+          Bullet.init
+            (Ship.front player.position player.rotation)
+            (player.velocity |> add (rotate player.rotation (0, 80)))
+            3.0
+
+        effects =
+          [ SpawnBullet bullet
+          ]
+      in
+        (Just player, effects)
 
 -- </editor-fold>
 
