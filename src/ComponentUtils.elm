@@ -10,50 +10,50 @@ import Element
 
 -- <editor-fold> FUNCTIONS
 
-updateMaybe : (a -> (Maybe a, Cmd b)) -> Maybe a -> (Maybe a, Cmd b)
+updateMaybe : (a -> (Maybe a, List effect)) -> Maybe a -> (Maybe a, List effect)
 updateMaybe updateFn maybeObj =
   case maybeObj of
     Just obj ->
       updateFn obj
 
     Nothing ->
-      Nothing ! []
+      (Nothing, [])
 
-updateIf : Bool -> (a -> (Maybe a, Cmd b)) -> a -> (Maybe a, Cmd b)
-updateIf b updateFn obj =
-  if b then
+updateIf : Bool -> (a -> (Maybe a, List effect)) -> a -> (Maybe a, List effect)
+updateIf cond updateFn obj =
+  if cond then
     updateFn obj
   else
-    Just obj ! []
+    (Just obj, [])
 
-mapUpdate : (a -> (Maybe a, Cmd b)) -> (Maybe a, Cmd b) -> (Maybe a, Cmd b)
-mapUpdate updateFn (maybeObj, cmd) =
+mapUpdate : (a -> (Maybe a, List effect)) -> (Maybe a, List effect) -> (Maybe a, List effect)
+mapUpdate updateFn (maybeObj, effects) =
   let
-    (obj', nextCmd) =
+    (updatedObj, newEffects) =
       updateMaybe updateFn maybeObj
   in
-    obj' ! [cmd, nextCmd]
+    (updatedObj, effects ++ newEffects)
 
-foldlUpdates : List (a -> (Maybe a, Cmd b)) -> a -> (Maybe a, Cmd b)
+foldlUpdates : List (a -> (Maybe a, List effect)) -> a -> (Maybe a, List effect)
 foldlUpdates updateFns obj =
   List.foldl
     mapUpdate
-    (Just obj ! [])
+    (Just obj, [])
     updateFns
 
-updateGroup : (a -> (Maybe a, Cmd b)) -> List a -> (List a, Cmd b)
+updateGroup : (a -> (Maybe a, List effect)) -> List a -> (List a, List effect)
 updateGroup updateFn xs =
   let
-    (updatedObjects, effects) =
+    (updatedObjects, effectLists) =
       map updateFn xs |> unzip
 
     aliveObjects =
       filterMap identity updatedObjects
 
-    batchedEffect =
-      Cmd.batch effects
+    effects =
+      List.foldl (++) [] effectLists
   in
-    (aliveObjects, batchedEffect)
+    (aliveObjects, effects)
 
 drawMaybe : (a -> Form) -> Maybe a -> Form
 drawMaybe drawFn maybeObj =

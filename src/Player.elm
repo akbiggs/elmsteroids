@@ -14,7 +14,7 @@ import Vector exposing (Vector)
 import Ship
 import Bullet
 
--- </editor-fold>
+-- </editor-fold> END IMPORTS
 
 -- <editor-fold> MODEL
 
@@ -26,14 +26,18 @@ type alias Model =
   , rotationDelta : Float
   }
 
-init : Vector -> (Model, Cmd Effect)
+init : Vector -> (Model, List Effect)
 init pos =
-  { position = pos
-  , velocity = Vector.zero
-  , velocityDelta = 0
-  , rotation = 0
-  , rotationDelta = 0
-  } ! []
+  let
+    initialModel =
+      { position = pos
+      , velocity = Vector.zero
+      , velocityDelta = 0
+      , rotation = 0
+      , rotationDelta = 0
+      }
+  in
+    (initialModel, [])
 
 accel : Float
 accel = 57.0
@@ -41,11 +45,11 @@ accel = 57.0
 rotationSpeed : Float
 rotationSpeed = 1.5
 
--- </editor-fold>
+-- </editor-fold> END MODEL
 
 -- <editor-fold> UPDATE
 
-type Action
+type Msg
   = SecondsElapsed Float
   | Accelerate
   | Decelerate
@@ -57,7 +61,7 @@ type Effect
   = PlaySound String
   | SpawnBullet Bullet.Model
 
-update : Action -> Model -> (Maybe Model, List Effect)
+update : Msg -> Model -> (Maybe Model, List Effect)
 update msg player =
   case msg of
     SecondsElapsed dt ->
@@ -73,46 +77,60 @@ update msg player =
 
         rotation =
           player.rotation + player.rotationDelta * dt
-      in
-        Just
+
+        updatedPlayer =
           { player
           | position = position
           , velocity = velocity
           , velocityDelta = 0
           , rotation = rotation
           , rotationDelta = 0
-          } ! []
+          }
+      in
+        (Just updatedPlayer, [])
 
     Accelerate ->
-      Just
-        { player
-        | velocityDelta = player.velocityDelta + accel
-        } ! []
+      let
+        updatedPlayer =
+          { player
+          | velocityDelta = player.velocityDelta + accel
+          }
+      in
+        (Just updatedPlayer, [])
 
     Decelerate ->
-      Just
-        { player
-        | velocityDelta = player.velocityDelta - accel
-        } ! []
+      let
+        updatedPlayer =
+          { player
+          | velocityDelta = player.velocityDelta - accel
+          }
+      in
+        (Just updatedPlayer, [])
 
     RotateLeft ->
-      Just
-        { player
-        | rotationDelta = -rotationSpeed
-        } ! []
+      let
+        updatedPlayer =
+          { player
+          | rotationDelta = -rotationSpeed
+          }
+      in
+        (Just updatedPlayer, [])
 
     RotateRight ->
-      Just
-        { player
-        | rotationDelta = rotationSpeed
-        } ! []
+      let
+        updatedPlayer =
+          { player
+          | rotationDelta = rotationSpeed
+          }
+      in
+        (Just updatedPlayer, [])
 
     FireBullet ->
       let
         bullet =
           Bullet.init
             (Ship.front player.position player.rotation)
-            (player.velocity |> add (rotate player.rotation (0, 80)))
+            (player.velocity |> Vector.add (Vector.rotate player.rotation (0, 80)))
             3.0
 
         effects =
@@ -121,11 +139,11 @@ update msg player =
       in
         (Just player, effects)
 
--- </editor-fold>
+-- </editor-fold> END UPDATE
 
 -- <editor-fold> VIEW
 
 draw : Model -> Form
 draw player = Ship.draw player.position player.rotation
 
--- </editor-fold>
+-- </editor-fold> END VIEW

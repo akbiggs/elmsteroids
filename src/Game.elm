@@ -13,6 +13,7 @@ import Random
 import Time exposing (Time)
 import AnimationFrame
 import Color
+import Debug
 
 -- LOCAL IMPORTS
 
@@ -20,7 +21,6 @@ import ComponentUtils exposing (..)
 import Bullet
 import AsteroidRandom
 import Asteroid
-import ObjectMsg exposing (ObjectMsg)
 import Bounds
 import Player
 import Vector
@@ -63,13 +63,12 @@ init =
     (keyboard, keyboardCmd) =
       Keyboard.init
 
-    (player, playerCmd) =
+    (player, playerEffects) =
       Player.init Vector.zero
 
     cmds =
       [ Random.generate SpawnAsteroids AsteroidRandom.asteroidGroup
       , Cmd.map KeyboardMsg keyboardCmd
-      , Cmd.map processPlayerEffect playerCmd
       ]
   in
     { state = Title
@@ -78,6 +77,7 @@ init =
     , asteroids = []
     , player = Just player
     } ! cmds
+      |> processEffects processPlayerEffect playerEffects
 
 -- </editor-fold>
 
@@ -88,6 +88,7 @@ type Msg
   | KeyboardMsg Keyboard.Msg
   | PlaySound String
   | SpawnAsteroids (List Asteroid.Model)
+  | SpawnBullets (List Bullet.Model)
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg game =
@@ -97,17 +98,17 @@ update msg game =
         dtSeconds =
           Time.inSeconds dt
 
-        (bullets, _) =
+        (bullets, bulletEffects) =
           updateGroup
             (Bullet.update (Bullet.SecondsElapsed dtSeconds))
             game.bullets
 
-        (asteroids, _) =
+        (asteroids, asteroidEffects) =
           updateGroup
             (Asteroid.update (Asteroid.SecondsElapsed dtSeconds))
             game.asteroids
 
-        (player, playerCmd) =
+        (player, playerEffects) =
           updateMaybe
             (foldlUpdates
               [ updateIf
@@ -130,15 +131,17 @@ update msg game =
             )
             game.player
 
-        cmds =
-          [ Cmd.map processPlayerEffect playerCmd
-          ]
+        (updatedGame, gameCmd) =
+          { game
+          | bullets = bullets
+          , asteroids = asteroids
+          , player = player
+          } ! []
+            |> processEffects processPlayerEffect playerEffects
+            |> ignoreUnusedEffects asteroidEffects
+            |> ignoreUnusedEffects bulletEffects
       in
-        { game
-        | bullets = bullets
-        , asteroids = asteroids
-        , player = player
-        } ! cmds
+        updatedGame ! [gameCmd]
 
     KeyboardMsg keyMsg ->
       let
@@ -157,18 +160,43 @@ update msg game =
       game ! [] -- TODO
 
     SpawnAsteroids asteroids ->
+      Debug.log "spawnAsteroids" (
       { game
       | asteroids = game.asteroids ++ asteroids
+      } ! [])
+
+    SpawnBullets bullets ->
+      { game
+      | bullets = game.bullets ++ bullets
       } ! []
 
-dropUnusedCmd : Cmd () -> Cmd Msg
-dropUnusedCmd _ = Cmd.none
+ignoreUnusedEffects : List () -> (Model, Cmd Msg) -> (Model, Cmd Msg)
+ignoreUnusedEffects _ =
+  identity
 
-processPlayerEffect : Player.Effect -> Msg
-processPlayerEffect effect =
+processEffects : (effect -> Model -> (Model, Cmd Msg)) -> List effect -> (Model, Cmd Msg) -> (Model, Cmd Msg)
+processEffects processEffectFn effects model =
+  let
+    processSingleEffect effect (game, cmd) =
+      let
+        (updatedGame, effectCmd) =
+          processEffectFn effect game
+
+        batchedCmd =
+          Cmd.batch [cmd, effectCmd]
+      in
+        (updatedGame, batchedCmd)
+  in
+    List.foldl processSingleEffect model effects
+
+processPlayerEffect : Player.Effect -> Model -> (Model, Cmd Msg)
+processPlayerEffect effect model =
   case effect of
     Player.PlaySound filename ->
-      PlaySound filename
+      update (PlaySound filename) model
+
+    Player.SpawnBullet bullet ->
+      update (SpawnBullets [bullet]) model
 
 -- </editor-fold>
 

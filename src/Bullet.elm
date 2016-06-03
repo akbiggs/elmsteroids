@@ -1,4 +1,4 @@
-module Bullet exposing (Model, Msg(..), fire, update, draw)
+module Bullet exposing (Model, Msg(..), init, update, draw)
 
 -- <editor-fold> IMPORTS
 
@@ -34,19 +34,19 @@ init pos vel timeUntilDeath =
 
 -- <editor-fold> UPDATE
 
-type Action
+type Msg
   = SecondsElapsed Time
 
 type alias Effect =
   ()
 
-update : Action -> Model -> (Maybe Model, List Effect)
+update : Msg -> Model -> (Maybe Model, List Effect)
 update msg bullet =
   case msg of
     SecondsElapsed dt ->
       let
         updatedBullet =
-          ((moveBullet dt >> killBullet dt) bullet)
+          (moveBullet dt >> killBullet dt) bullet
       in
         (updatedBullet, [])
 

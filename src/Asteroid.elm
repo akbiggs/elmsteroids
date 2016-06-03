@@ -2,7 +2,7 @@ module Asteroid exposing (Model, AsteroidSize, Msg(..), update, draw, liesInside
 
 -- <editor-fold> IMPORTS
 
--- <editor-fold> EXTERNAL IMPORTS
+-- EXTERNAL IMPORTS
 
 import List exposing (map, concatMap, any)
 import Collage exposing (Form, group, polygon, filled, outlined, defaultLine)
@@ -10,9 +10,7 @@ import Color exposing (..)
 import Random exposing (Seed, int, float, step)
 import Time exposing (Time)
 
--- </editor-fold>
-
--- <editor-fold> LOCAL IMPORTS
+-- LOCAL IMPORTS
 
 import State exposing (..)
 import Vector exposing (..)
@@ -20,12 +18,9 @@ import Segment exposing (Segment)
 import Triangle exposing (Triangle)
 import Bounds
 import SegmentParticle exposing (segmentParticles)
-import ObjectMsg exposing (..)
 import Wrap
 
--- </editor-fold>
-
--- </editor-fold>
+-- </editor-fold> END IMPORTS
 
 -- <editor-fold> MODEL
 
@@ -119,25 +114,25 @@ wrappedSegments =
 --       else
 --         return ([], particles)
 
--- </editor-fold>
+-- </editor-fold> END MODEL
 
 -- <editor-fold> UPDATE
 
-type Action
+type Msg
   = SecondsElapsed Time
 
 type alias Effect =
   ()
 
-update : Action -> Model -> (Maybe Model, List Effect)
+update : Msg -> Model -> (Maybe Model, List Effect)
 update msg asteroid =
   case msg of
     SecondsElapsed dt ->
       let
         updatedAsteroid =
-          Just (moveAsteroid dt asteroid |> rotateAsteroid dt)
+          (moveAsteroid dt asteroid |> rotateAsteroid dt)
       in
-        (updatedAsteroid, [])
+        (Just updatedAsteroid, [])
 
 moveAsteroid : Float -> Model -> Model
 moveAsteroid dt asteroid =
@@ -151,7 +146,7 @@ rotateAsteroid dt asteroid =
   | rotation = asteroid.rotation + asteroid.rotationVelocity * dt
   }
 
--- </editor-fold>
+-- </editor-fold> END UPDATE
 
 -- <editor-fold> VIEW
 
@@ -185,4 +180,4 @@ wrapPoints =
       (\bound -> any (\(_, y) -> y < bound))
       move
 
--- </editor-fold>
+-- </editor-fold> END VIEW
