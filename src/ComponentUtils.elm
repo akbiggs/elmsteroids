@@ -5,8 +5,9 @@ module ComponentUtils exposing (updateMaybe, updateIf, updateGroup, mapUpdate, f
 import List exposing (map, filter, filterMap, unzip)
 import Collage exposing (Form, group)
 import Element
+import Tuple2
 
--- </editor-fold>
+-- </editor-fold> END IMPORTS
 
 -- <editor-fold> FUNCTIONS
 
@@ -36,24 +37,13 @@ mapUpdate updateFn (maybeObj, effects) =
 
 foldlUpdates : List (a -> (Maybe a, List effect)) -> a -> (Maybe a, List effect)
 foldlUpdates updateFns obj =
-  List.foldl
-    mapUpdate
-    (Just obj, [])
-    updateFns
+  List.foldl mapUpdate (Just obj, []) updateFns
 
-updateGroup : (a -> (Maybe a, List effect)) -> List a -> (List a, List effect)
+updateGroup : (a -> (b, List effect)) -> List a -> (List b, List effect)
 updateGroup updateFn xs =
-  let
-    (updatedObjects, effectLists) =
-      map updateFn xs |> unzip
-
-    aliveObjects =
-      filterMap identity updatedObjects
-
-    effects =
-      List.foldl (++) [] effectLists
-  in
-    (aliveObjects, effects)
+  List.map updateFn xs
+    |> List.unzip
+    |> Tuple2.mapSnd List.concat
 
 drawMaybe : (a -> Form) -> Maybe a -> Form
 drawMaybe drawFn maybeObj =
@@ -68,4 +58,4 @@ drawGroup : (a -> Form) -> List a -> Form
 drawGroup drawFn =
   map drawFn >> group
 
--- </editor-fold>
+-- </editor-fold> END FUNCTIONS

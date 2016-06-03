@@ -124,15 +124,16 @@ type Msg
 type alias Effect =
   ()
 
-update : Msg -> Model -> (Maybe Model, List Effect)
+update : Msg -> Model -> (Model, List Effect)
 update msg asteroid =
   case msg of
     SecondsElapsed dt ->
       let
         updatedAsteroid =
-          (moveAsteroid dt asteroid |> rotateAsteroid dt)
+          moveAsteroid dt asteroid
+            |> rotateAsteroid dt
       in
-        (Just updatedAsteroid, [])
+        (updatedAsteroid, [])
 
 moveAsteroid : Float -> Model -> Model
 moveAsteroid dt asteroid =

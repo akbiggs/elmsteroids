@@ -14,6 +14,7 @@ import Time exposing (Time)
 import AnimationFrame
 import Color
 import Debug
+import Tuple2
 
 -- LOCAL IMPORTS
 
@@ -99,14 +100,13 @@ update msg game =
           Time.inSeconds dt
 
         (bullets, bulletEffects) =
-          updateGroup
-            (Bullet.update (Bullet.SecondsElapsed dtSeconds))
-            game.bullets
+          game.bullets
+            |> updateGroup (Bullet.update (Bullet.SecondsElapsed dtSeconds))
+            |> Tuple2.mapFst filterAlive
 
         (asteroids, asteroidEffects) =
-          updateGroup
-            (Asteroid.update (Asteroid.SecondsElapsed dtSeconds))
-            game.asteroids
+          game.asteroids
+            |> updateGroup (Asteroid.update (Asteroid.SecondsElapsed dtSeconds))
 
         (player, playerEffects) =
           updateMaybe
@@ -160,15 +160,18 @@ update msg game =
       game ! [] -- TODO
 
     SpawnAsteroids asteroids ->
-      Debug.log "spawnAsteroids" (
       { game
       | asteroids = game.asteroids ++ asteroids
-      } ! [])
+      } ! []
 
     SpawnBullets bullets ->
       { game
       | bullets = game.bullets ++ bullets
       } ! []
+
+filterAlive : List (Maybe a) -> List a
+filterAlive =
+  List.filterMap identity
 
 ignoreUnusedEffects : List () -> (Model, Cmd Msg) -> (Model, Cmd Msg)
 ignoreUnusedEffects _ =
