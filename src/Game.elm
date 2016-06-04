@@ -13,18 +13,20 @@ import Random
 import Time exposing (Time)
 import AnimationFrame
 import Color
-import Debug
 import Tuple2
 
 -- LOCAL IMPORTS
 
 import ComponentUtils exposing (..)
 import Bullet
-import AsteroidRandom
 import Asteroid
+import AsteroidRandom
+import SegmentParticle
+import SegmentParticleRandom
 import Bounds
 import Player
 import Vector
+import Collisions
 
 -- </editor-fold>
 
@@ -56,6 +58,7 @@ type alias Model =
   , bullets : List Bullet.Model
   , asteroids : List Asteroid.Model
   , player : Maybe Player.Model
+  , segmentParticles : List SegmentParticle.Model
   }
 
 init : (Model, Cmd Msg)
@@ -76,6 +79,7 @@ init =
     , keyboard = keyboard
     , bullets = []
     , asteroids = []
+    , segmentParticles = []
     , player = Just player
     } ! cmds
       |> processEffects processPlayerEffect playerEffects
@@ -90,6 +94,7 @@ type Msg
   | PlaySound String
   | SpawnAsteroids (List Asteroid.Model)
   | SpawnBullets (List Bullet.Model)
+  | SpawnSegmentParticles (List SegmentParticle.Model)
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg game =
@@ -107,6 +112,7 @@ update msg game =
         (asteroids, asteroidEffects) =
           game.asteroids
             |> updateGroup (Asteroid.update (Asteroid.SecondsElapsed dtSeconds))
+            |> Tuple2.mapFst filterAlive
 
         (player, playerEffects) =
           updateMaybe
@@ -138,8 +144,8 @@ update msg game =
           , player = player
           } ! []
             |> processEffects processPlayerEffect playerEffects
-            |> ignoreUnusedEffects asteroidEffects
-            |> ignoreUnusedEffects bulletEffects
+            |> processEffects processAsteroidEffect asteroidEffects
+            |> handleCollisions
       in
         updatedGame ! [gameCmd]
 
@@ -167,6 +173,11 @@ update msg game =
     SpawnBullets bullets ->
       { game
       | bullets = game.bullets ++ bullets
+      } ! []
+
+    SpawnSegmentParticles segmentParticles ->
+      { game
+      | segmentParticles = game.segmentParticles ++ segmentParticles
       } ! []
 
 filterAlive : List (Maybe a) -> List a
@@ -200,6 +211,39 @@ processPlayerEffect effect model =
 
     Player.SpawnBullet bullet ->
       update (SpawnBullets [bullet]) model
+
+processAsteroidEffect : Asteroid.Effect -> Model -> (Model, Cmd Msg)
+processAsteroidEffect effect model =
+  case effect of
+    Asteroid.SpawnSegmentParticles {velocity, segments} ->
+      let
+        particlesGenerator =
+          SegmentParticleRandom.particles velocity segments
+
+        cmds =
+          [ Random.generate SpawnSegmentParticles particlesGenerator
+          ]
+      in
+        model ! cmds
+
+    Asteroid.SpawnSplitAsteroids {fromScale, position} ->
+      let
+        splitAsteroidsGenerator =
+          AsteroidRandom.asteroidGroupWithScaleAt (fromScale - 1) position
+
+        cmds =
+          [ Random.generate SpawnAsteroids splitAsteroidsGenerator
+          ]
+      in
+        model ! cmds
+
+handleCollisions : (Model, Cmd Msg) -> (Model, Cmd Msg)
+handleCollisions (model, cmd) =
+  let
+    (updatedModel, collisionEffects) =
+
+  in
+
 
 -- </editor-fold>
 

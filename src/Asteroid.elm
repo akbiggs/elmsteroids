@@ -1,4 +1,4 @@
-module Asteroid exposing (Model, AsteroidSize, Msg(..), update, draw, liesInside, wrappedSegments)
+module Asteroid exposing (Model, AsteroidSize, Msg(..), Effect(..), update, draw, liesInside, wrappedSegments)
 
 -- <editor-fold> IMPORTS
 
@@ -17,7 +17,6 @@ import Vector exposing (..)
 import Segment exposing (Segment)
 import Triangle exposing (Triangle)
 import Bounds
-import SegmentParticle exposing (segmentParticles)
 import Wrap
 
 -- </editor-fold> END IMPORTS
@@ -39,32 +38,32 @@ type alias Model =
   }
 
 absolutePoints : Model -> List Vector
-absolutePoints asteroid =
-  asteroid.points
-    |> map (rotate asteroid.rotation >> add asteroid.position)
+absolutePoints model =
+  model.points
+    |> map (rotate model.rotation >> add model.position)
 
 liesInside : Vector -> Model -> Bool
-liesInside point =
-  triangles
-    >> concatMap Triangle.wrap
-    >> any (Triangle.liesInside point)
+liesInside point model =
+  triangles model
+    |> concatMap Triangle.wrap
+    |> any (Triangle.liesInside point)
 
 triangles : Model -> List Triangle
-triangles asteroid =
-  asteroid
+triangles model =
+  model
     |> segments
     |> map
        (\segment ->
           { a = segment.a
           , b = segment.b
-          , c = asteroid.position
+          , c = model.position
           })
 
 segments : Model -> List Segment
-segments asteroid =
+segments model =
   let
     points =
-      absolutePoints asteroid
+      absolutePoints model
   in
     case points of
       [] ->
@@ -97,22 +96,9 @@ segments' firstPoint points =
         segment :: segments' firstPoint xs
 
 wrappedSegments : Model -> List Segment
-wrappedSegments =
-  segments >> concatMap Segment.wrap
-
--- split : Model -> State Seed (List Model, List SegmentParticle.Model)
--- split asteroid =
---   segmentParticles asteroid.velocity (segments asteroid) >>= \particles ->
---     let
---       scale =
---         asteroid.scale - 1
---     in
---       if size > 0 then
---         Random.step (Random.int 1 3) >>=
---           split' asteroid.position scale >>= \asteroids ->
---             return (asteroids, particles)
---       else
---         return ([], particles)
+wrappedSegments model =
+  segments model
+    |> concatMap Segment.wrap
 
 -- </editor-fold> END MODEL
 
@@ -120,20 +106,49 @@ wrappedSegments =
 
 type Msg
   = SecondsElapsed Time
+  | BlowUp
 
-type alias Effect =
-  ()
+type Effect
+  = SpawnSplitAsteroids
+    { position : Vector
+    , fromScale : Int
+    }
+  | SpawnSegmentParticles
+    { velocity : Vector
+    , segments : List Segment
+    }
 
-update : Msg -> Model -> (Model, List Effect)
-update msg asteroid =
+update : Msg -> Model -> (Maybe Model, List Effect)
+update msg model =
   case msg of
     SecondsElapsed dt ->
       let
         updatedAsteroid =
-          moveAsteroid dt asteroid
+          moveAsteroid dt model
             |> rotateAsteroid dt
       in
-        (updatedAsteroid, [])
+        (Just updatedAsteroid, [])
+
+    BlowUp ->
+      let
+        spawnParticlesEffect =
+          SpawnSegmentParticles
+            { velocity = model.velocity
+            , segments = segments model
+            }
+
+        spawnAsteroidsEffect =
+          SpawnSplitAsteroids
+            { position = model.position
+            , fromScale = model.scale
+            }
+
+        effects =
+          [ spawnParticlesEffect ]
+            ++ (if model.scale > 1 then [ spawnAsteroidsEffect ] else [])
+
+      in
+        (Nothing, effects)
 
 moveAsteroid : Float -> Model -> Model
 moveAsteroid dt asteroid =

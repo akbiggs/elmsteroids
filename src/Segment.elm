@@ -1,4 +1,4 @@
-module Segment exposing (Segment, center, intersect, wrap)
+module Segment exposing (Segment, init, center, intersect, wrap)
 
 import Vector exposing (..)
 import Wrap
@@ -6,6 +6,12 @@ import Wrap
 type alias Segment =
   { a : Vector
   , b : Vector
+  }
+
+init : Vector -> Vector -> Segment
+init a b =
+  { a = a
+  , b = b
   }
 
 offset : Vector -> Segment -> Segment

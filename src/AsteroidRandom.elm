@@ -1,4 +1,4 @@
-module AsteroidRandom exposing (asteroidGroup)
+module AsteroidRandom exposing (asteroidGroup, asteroidGroupWithScaleAt)
 
 -- <editor-fold> IMPORTS
 
@@ -15,10 +15,20 @@ import Vector exposing (Vector)
 
 -- </editor-fold>
 
+numAsteroids : Generator Int
+numAsteroids =
+  Random.int 2 3
+
 asteroidGroup : Generator (List Asteroid.Model)
 asteroidGroup =
-  Random.int 2 3
-    `andThen` \n -> Random.list n asteroid
+  numAsteroids `andThen` \n ->
+    Random.list n asteroid
+
+asteroidGroupWithScaleAt : Int -> Vector -> Generator (List Asteroid.Model)
+asteroidGroupWithScaleAt scale position =
+  numAsteroids `andThen` \n ->
+    size scale scale `andThen` \s ->
+      Random.list n (asteroidWithSizeAt s position)
 
 asteroid : Generator Asteroid.Model
 asteroid =

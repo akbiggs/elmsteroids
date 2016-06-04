@@ -1,14 +1,23 @@
-module SegmentParticle exposing (Model, segmentParticles, tick, draw)
+module SegmentParticle exposing (Model, Msg(..), Effect, update, draw)
+
+-- <editor-fold> IMPORTS
+
+-- EXTERNAL IMPORTS
 
 import List exposing (map, filterMap)
 import Collage exposing (Form, group, path, traced, defaultLine, move, alpha)
 import Color exposing (..)
 import Random exposing (Seed, float, step)
+
+-- LOCAL IMPORTS
+
 import State exposing (..)
 import Vector exposing (..)
 import Segment exposing (Segment, center)
 
--- MODEL
+-- </editor-fold> END IMPORTS
+
+-- <editor-fold> MODEL
 
 type alias Model =
   { position : Vector
@@ -19,64 +28,53 @@ type alias Model =
   , timeUntilDeath : Float
   }
 
-segmentParticles : Vector -> List Segment -> State Seed (List Model)
-segmentParticles initialVelocity segments =
-  case segments of
-    [] -> return []
-    x::xs ->
-      (::)
-        <$> segmentParticle initialVelocity x
-        <*> segmentParticles initialVelocity xs
+-- </editor-fold> END MODEL
 
-segmentParticle : Vector -> Segment -> State Seed Model
-segmentParticle initialVelocity segment =
-  let angle = float 0 (pi * 2) |> step
-  in
-    angle >>= \velDirection ->
-      step (float 0 40) >>= \velMagnitude ->
-        step (float -1 1) >>= \rotationVelocity ->
-          step (float 1 3) >>= \timeUntilDeath ->
-            let
-              position = center segment
-              segment' =
-                { a = sub segment.a position
-                , b = sub segment.b position
-                }
-            in
-              return
-                { position = position
-                , velocity =
-                  rotate velDirection (0, velMagnitude)
-                    |> add initialVelocity
-                , rotation = 0
-                , rotationVelocity = rotationVelocity
-                , segment = segment'
-                , timeUntilDeath = timeUntilDeath
-                }
+-- <editor-fold> UPDATE
 
-tick : Float -> Model -> Maybe Model
-tick timeDelta =
-  moveParticle timeDelta >> rotateParticle timeDelta >> killParticle timeDelta
+type Msg
+  = SecondsElapsed Float
+
+type alias Effect =
+  ()
+
+update : Msg -> Model -> (Maybe Model, List Effect)
+update msg model =
+  case msg of
+    SecondsElapsed dt ->
+      moveParticle dt model
+        |> rotateParticle dt
+        |> killParticle dt
+        |> \x -> (x, [])
 
 moveParticle : Float -> Model -> Model
-moveParticle timeDelta particle =
-  { particle | position =
-      add particle.position (mulS timeDelta particle.velocity) |> wrap
+moveParticle dt particle =
+  { particle
+  | position =
+      add particle.position (mulS dt particle.velocity)
+        |> wrap
   }
 
 rotateParticle : Float -> Model -> Model
-rotateParticle timeDelta particle =
-  { particle | rotation =
-      particle.rotation + particle.rotationVelocity * timeDelta
+rotateParticle dt particle =
+  { particle
+  | rotation =
+      particle.rotation + particle.rotationVelocity * dt
   }
 
 killParticle : Float -> Model -> Maybe Model
 killParticle timeDelta particle =
-  let timeUntilDeath = particle.timeUntilDeath - timeDelta
+  let
+    timeUntilDeath =
+      particle.timeUntilDeath - timeDelta
   in
     if timeUntilDeath > 0 then
       Just { particle | timeUntilDeath = timeUntilDeath }
     else Nothing
+
+-- </editor-fold> END UPDATE
+
+-- <editor-fold> VIEW
 
 draw : Model -> Form
 draw particle =
@@ -94,3 +92,5 @@ drawSegment rotation segment =
     , rotate rotation segment.b
     ]
     |> traced { defaultLine | color = white }
+
+-- </editor-fold> END VIEW
