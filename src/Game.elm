@@ -155,7 +155,7 @@ update msg game =
                         |> processEffects processAsteroidEffect asteroidEffects
                         |> handleCollisions
             in
-                (,) updatedGame ! [ gameCmd ]
+                updatedGame ! [ gameCmd ]
 
         KeyboardMsg keyMsg ->
             let
