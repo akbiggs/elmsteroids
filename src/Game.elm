@@ -145,19 +145,17 @@ update msg game =
                         game.player
 
                 ( updatedGame, gameCmd ) =
-                    (,)
-                        { game
-                            | bullets = bullets
-                            , asteroids = asteroids
-                            , player = player
-                        }
-                        Cmd.none
-
-                -- |> processEffects processPlayerEffect playerEffects
-                -- |> processEffects processAsteroidEffect asteroidEffects
-                -- |> handleCollisions
+                    { game
+                        | bullets = bullets
+                        , asteroids = asteroids
+                        , player = player
+                    }
+                        ! []
+                        |> processEffects processPlayerEffect playerEffects
+                        |> processEffects processAsteroidEffect asteroidEffects
+                        |> handleCollisions
             in
-                (,) updatedGame gameCmd
+                (,) updatedGame ! [ gameCmd ]
 
         KeyboardMsg keyMsg ->
             let
