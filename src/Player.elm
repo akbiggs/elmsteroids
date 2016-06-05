@@ -13,6 +13,7 @@ import Time exposing (Time)
 import Vector exposing (Vector)
 import Ship
 import Bullet
+import Segment exposing (Segment)
 
 
 -- </editor-fold> END IMPORTS
@@ -52,6 +53,16 @@ rotationSpeed =
     1.5
 
 
+front : Model -> Vector
+front model =
+    Ship.front model.position model.rotation
+
+
+wrappedSegments : Model -> List Segment
+wrappedSegments =
+    Ship.wrappedSegments model.position model.rotation
+
+
 
 -- </editor-fold> END MODEL
 -- <editor-fold> UPDATE
@@ -64,32 +75,37 @@ type Msg
     | RotateLeft
     | RotateRight
     | FireBullet
+    | Die
 
 
 type Effect
     = PlaySound String
     | SpawnBullet Bullet.Model
+    | SpawnSegmentParticles
+        { velocity : Vector
+        , segments : List Segment
+        }
 
 
 update : Msg -> Model -> ( Maybe Model, List Effect )
-update msg player =
+update msg model =
     case msg of
         SecondsElapsed dt ->
             let
                 position =
-                    Vector.add player.position (Vector.mulS dt player.velocity)
+                    Vector.add model.position (Vector.mulS dt model.velocity)
                         |> Vector.wrap
 
                 velocity =
-                    ( 0, player.velocityDelta * dt )
-                        |> Vector.rotate player.rotation
-                        |> Vector.add player.velocity
+                    ( 0, model.velocityDelta * dt )
+                        |> Vector.rotate model.rotation
+                        |> Vector.add model.velocity
 
                 rotation =
-                    player.rotation + player.rotationDelta * dt
+                    model.rotation + model.rotationDelta * dt
 
-                updatedPlayer =
-                    { player
+                updatedModel =
+                    { model
                         | position = position
                         , velocity = velocity
                         , velocityDelta = 0
@@ -97,56 +113,69 @@ update msg player =
                         , rotationDelta = 0
                     }
             in
-                ( Just updatedPlayer, [] )
+                ( Just updatedModel, [] )
 
         Accelerate ->
             let
-                updatedPlayer =
-                    { player
-                        | velocityDelta = player.velocityDelta + accel
+                updatedModel =
+                    { model
+                        | velocityDelta = model.velocityDelta + accel
                     }
             in
-                ( Just updatedPlayer, [] )
+                ( Just updatedModel, [] )
 
         Decelerate ->
             let
-                updatedPlayer =
-                    { player
-                        | velocityDelta = player.velocityDelta - accel
+                updatedModel =
+                    { model
+                        | velocityDelta = model.velocityDelta - accel
                     }
             in
-                ( Just updatedPlayer, [] )
+                ( Just updatedModel, [] )
 
         RotateLeft ->
             let
-                updatedPlayer =
-                    { player
+                updatedModel =
+                    { model
                         | rotationDelta = -rotationSpeed
                     }
             in
-                ( Just updatedPlayer, [] )
+                ( Just updatedModel, [] )
 
         RotateRight ->
             let
-                updatedPlayer =
-                    { player
+                updatedModel =
+                    { model
                         | rotationDelta = rotationSpeed
                     }
             in
-                ( Just updatedPlayer, [] )
+                ( Just updatedModel, [] )
 
         FireBullet ->
             let
                 bullet =
-                    Bullet.init (Ship.front player.position player.rotation)
-                        (player.velocity |> Vector.add (Vector.rotate player.rotation ( 0, 80 )))
+                    Bullet.init (front model)
+                        (model.velocity |> Vector.add (Vector.rotate model.rotation ( 0, 80 )))
                         3.0
 
                 effects =
                     [ SpawnBullet bullet
                     ]
             in
-                ( Just player, effects )
+                ( Just model, effects )
+
+        Die ->
+            let
+                segmentParticleEffect =
+                    SpawnSegmentParticles
+                        { velocity = model.velocity
+                        , segments = Player.wrappedSegments model
+                        }
+
+                effects =
+                    [ segmentParticleEffect ]
+            in
+                ( Nothing, effects )
 
 
 

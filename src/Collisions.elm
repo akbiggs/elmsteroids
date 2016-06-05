@@ -1,4 +1,4 @@
-module Collisions exposing (collide)
+module Collisions exposing (handleCollisions, Effect)
 
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS
@@ -17,6 +17,7 @@ import Asteroid exposing (liesInside)
 import Vector exposing (Vector)
 import Bullet
 import Ship
+import ComponentUtils exposing (updateGroup, updateMaybe)
 
 
 -- </editor-fold> END IMPORTS
@@ -29,93 +30,62 @@ type alias Objects =
     }
 
 
-type Collision
-    = BulletWithAsteroids Bullet.Model Asteroid.Model
-    | PlayerWithAsteroid Player.Model Asteroid.Model
-
-
 type Effect
-    = IncreaseScore Int
-    | SpawnSegmentParticles
-        { velocity : Vector
-        , segments : List Segment
-        }
-
-
-filterCollisions : List (Maybe Collision) -> List Collision
-filterCollisions maybeCollisions =
-    List.filterMap identity maybeCollisions
+    = PlayerEffect Player.Effect
+    | AsteroidEffect Asteroid.Effect
+    | BulletEffect Bullet.Effect
 
 
 handleCollisions : Objects -> ( Objects, List Effect )
-handleCollisions { player, asteroids, bullets } =
+handleCollisions objects =
     let
-        playerCollisions =
-            case player of
-                Just x ->
-                    List.map (getPlayerAsteroidCollision x) asteroids
-                        |> filterCollisions
+        ( updatedPlayer, playerEffects ) =
+            updateMaybe (handlePlayerCollisions objects) objects.player
 
-                Nothing ->
-                    []
+        ( updatedBullets, bulletEffects ) =
+            updateGroup (handleBulletCollisions objects) objects.bullets
 
-        bulletCollisions =
-            pairs bullets asteroids
-                |> List.map getBulletAsteroidCollision
-                |> filterCollisions
+        ( updatedAsteroids, asteroidEffects ) =
+            updateGroup (handleAsteroidCollisions objects) objects.asteroids
+
+        updatedObjects =
+            { player = updatedPlayer
+            , asteroids = updatedAsteroids
+            , bullets = updatedBullets
+            }
+
+        effects =
+            List.concat
+                [ List.map PlayerEffect playerEffects
+                , List.map AsteroidEffect asteroidEffects
+                , List.map BulletEffect bulletEffects
+                ]
     in
-        List.concat [ playerCollisions, bulletCollisions ]
+        ( updatedObjects, effects )
 
 
-getPlayerAsteroidCollision : Player.Model -> Asteroid.Model -> Maybe Collision
-getPlayerAsteroidCollision player asteroid =
-    if isPlayerCollidingWithAsteroid player asteroid then
-        Just <| PlayerWithAsteroid player asteroid
+handlePlayerCollisions : Objects -> Player -> ( Maybe Player, List Player.Effect )
+handlePlayerCollisions { asteroids } player =
+    if List.any (isPlayerCollidingWithAsteroid player) asteroids then
+        Player.update Player.Die player
     else
-        Nothing
+        ( Just player, [] )
 
 
-getBulletAsteroidCollision : Bullet.Model -> Asteroid.Model -> Maybe Collision
-getBulletAsteroidCollision bullet asteroid =
-    if isBulletCollidingWithAsteroid bullet asteroid then
-        Just <| BulletWithAsteroid bullet asteroid
+handleBulletCollisions : Objects -> Bullet -> ( Maybe Bullet, List Bullet.Effect )
+handleBulletCollisions { asteroids } bullet =
+    if List.any (isBulletCollidingWithAsteroid bullet) asteroids then
+        Bullet.update Bullet.Explode bullet
     else
-        Nothing
+        ( Just bullet, [] )
 
 
-collide : Maybe Player.Model -> List Asteroid.Model -> List Bullet.Model -> State Seed ( List Asteroid.Model, List Bullet.Model, List SegmentParticle.Model, Int, Bool )
-collide player asteroids bullets =
-    collideAsteroidsBullets asteroids bullets
-        >>= \( asteroids', bullets', particles, score ) ->
-                case player of
-                    Just player' ->
-                        collidePlayerAsteroids player' asteroids'
-                            >>= \( hitPlayer, particles' ) ->
-                                    return ( asteroids', bullets', particles ++ particles', score, hitPlayer )
-
-                    _ ->
-                        return ( asteroids', bullets', particles, score, False )
-
-
-collideAsteroidsBullets : List Asteroid.Model -> List Bullet.Model -> State Seed ( List Asteroid.Model, List Bullet.Model, List SegmentParticle.Model, Int )
-collideAsteroidsBullets asteroids bullets =
-    collideAsteroidsBullets' asteroids bullets
-        >>= \( asteroids, bullets', particles, score ) ->
-                return ( concat asteroids, bullets', concat particles, score )
-
-
-collideAsteroidsBullets' : List Asteroid.Model -> List Bullet.Model -> State Seed ( List (List Asteroid.Model), List Bullet.Model, List (List SegmentParticle.Model), Int )
-collideAsteroidsBullets' asteroids bullets =
-    case asteroids of
-        [] ->
-            return ( [], bullets, [], 0 )
-
-        x :: xs ->
-            collideAsteroidBullet x bullets
-                >>= \( asteroids', bullets', particles, score ) ->
-                        collideAsteroidsBullets' xs bullets'
-                            >>= \( xs', bullets'', particles', score' ) ->
-                                    return ( asteroids' :: xs', bullets'', particles :: particles', score + score' )
+handleAsteroidCollisions : Objects -> Asteroid -> ( Maybe Asteroid, List Asteroid.Effect )
+handleAsteroidCollisions { bullets } asteroid =
+    if List.any (\x -> isBulletCollidingWithAsteroid x asteroid) bullets then
+        Asteroid.update Asteroid.BlowUp asteroid
+    else
+        ( Just asteroid, [] )
 
 
 isBulletCollidingWithAsteroid : Bullet.Model -> Asteroid.Model -> Bool
@@ -123,85 +93,32 @@ isBulletCollidingWithAsteroid bullet asteroid =
     liesInside bullet.position asteroid
 
 
-collideAsteroidBullet : Asteroid.Model -> List Bullet.Model -> State Seed ( List Asteroid.Model, List Bullet.Model, List SegmentParticle.Model, Int )
-collideAsteroidBullet asteroid bullets =
-    case bullets of
-        [] ->
-            return ( [ asteroid ], [], [], 0 )
-
-        x :: xs ->
-            if liesInside x.position asteroid then
-                split asteroid
-                    >>= \( asteroids, particles ) ->
-                            return ( asteroids, xs, particles, 100 )
-            else
-                collideAsteroidBullet asteroid xs
-                    >>= \( asteroids, xs', particles, score ) ->
-                            return ( asteroids, x :: xs', particles, score )
-
-
-collidePlayerAsteroids : Player.Model -> List Asteroid.Model -> State Seed ( Bool, List SegmentParticle.Model )
-collidePlayerAsteroids player asteroids =
-    case asteroids of
-        [] ->
-            return ( False, [] )
-
-        x :: xs ->
-            collidePlayerAsteroid player x
-                >>= \( hitPlayer, particles ) ->
-                        if hitPlayer then
-                            return ( True, particles )
-                        else
-                            collidePlayerAsteroids player xs
-
-
 isPlayerCollidingWithAsteroid : Player.Model -> Asteroid.Model -> Bool
 isPlayerCollidingWithAsteroid player asteroid =
     let
-        shipTriangles =
-            Ship.triangle player.position player.rotation |> Triangle.wrap
-
         shipSegments =
-            concatMap Triangle.segments shipTriangles
+            Player.segments player
 
         asteroidSegments =
             Asteroid.wrappedSegments asteroid
 
         segmentPairs =
-            pairs shipSegments asteroidSegments
+            allPairs shipSegments asteroidSegments
 
         isInsideAsteroid x =
             Asteroid.liesInside x asteroid
     in
         any (uncurry intersect) segmentPairs
-            || any (\t -> isInsideAsteroid t.a || isInsideAsteroid t.b || isInsideAsteroid t.c) shipTriangles
+            || any
+                (\t ->
+                    Asteroid.liesInside t.a asteroid
+                        || Asteroid.liesInside t.b asteroid
+                        || Asteroid.liesInside t.c asteroid
+                )
+                shipTriangles
 
 
-collidePlayerAsteroid : Player.Model -> Asteroid.Model -> State Seed ( Bool, List SegmentParticle.Model )
-collidePlayerAsteroid player asteroid =
-    if isPlayerCollidingWithAsteroid player asteroid then
-        segmentParticles player.velocity shipSegments
-            >>= \particles ->
-                    return ( True, particles )
-    else
-        return ( False, [] )
-
-
-pairs : List a -> List b -> List ( a, b )
-pairs a b =
-    case a of
-        [] ->
-            []
-
-        x :: xs ->
-            pairs' x b ++ pairs xs b
-
-
-pairs' : a -> List b -> List ( a, b )
-pairs' x b =
-    case b of
-        [] ->
-            []
-
-        y :: ys ->
-            ( x, y ) :: pairs' x ys
+allPairs : List a -> List b -> List ( a, b )
+allPairs xs ys =
+    List.map (\x -> List.map ((,) x) ys)
+        xs

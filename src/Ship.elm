@@ -30,6 +30,13 @@ triangle position rotation =
     }
 
 
+wrappedSegments : Vector -> Float -> List Segment
+wrappedSegments position rotation =
+    triangle position rotation
+        |> Triangle.wrap
+        |> concatMap Triangle.segments
+
+
 draw : Vector -> Float -> Form
 draw position rotation =
     triangle position rotation

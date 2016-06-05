@@ -125,12 +125,13 @@ type Msg
 type Effect
     = SpawnSplitAsteroids
         { position : Vector
-        , fromScale : Int
+        , parentScale : Int
         }
     | SpawnSegmentParticles
         { velocity : Vector
         , segments : List Segment
         }
+    | IncreaseScore Int
 
 
 update : Msg -> Model -> ( Maybe Model, List Effect )
@@ -149,18 +150,23 @@ update msg model =
                 spawnParticlesEffect =
                     SpawnSegmentParticles
                         { velocity = model.velocity
-                        , segments = segments model
+                        , segments = wrappedSegments model
                         }
 
                 spawnAsteroidsEffect =
                     SpawnSplitAsteroids
                         { position = model.position
-                        , fromScale = model.scale
+                        , parentScale = model.scale
                         }
 
+                shouldSplit =
+                    model.scale > 1
+
                 effects =
-                    [ spawnParticlesEffect ]
-                        ++ (if model.scale > 1 then
+                    [ spawnParticlesEffect
+                    , IncreaseScore 100
+                    ]
+                        ++ (if shouldSplit then
                                 [ spawnAsteroidsEffect ]
                             else
                                 []

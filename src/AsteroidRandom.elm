@@ -114,18 +114,22 @@ rotationVelocity =
 size : Int -> Int -> Generator AsteroidSize
 size minScale maxScale =
     Random.int minScale maxScale
-        `andThen` \scale ->
-                    let
-                        idealRadius =
-                            toFloat scale * 16.0
+        `andThen` sizeWithScale
 
-                        minRadius =
-                            idealRadius * 0.95
 
-                        maxRadius =
-                            idealRadius * 1.05
-                    in
-                        Random.map (\radius -> ( scale, radius )) (Random.float minRadius maxRadius)
+sizeWithScale : Int -> Generator AsteroidSize
+sizeWithScale scale =
+    let
+        idealRadius =
+            toFloat scale * 16.0
+
+        minRadius =
+            idealRadius * 0.95
+
+        maxRadius =
+            idealRadius * 1.05
+    in
+        Random.map (\radius -> ( scale, radius )) (Random.float minRadius maxRadius)
 
 
 asteroidPoints : Float -> Generator (List Vector)
@@ -144,6 +148,8 @@ asteroidPoints radius =
 
 asteroidPoints' : Float -> Float -> Float -> Int -> Generator (List Vector)
 asteroidPoints' segAngleDelta minRadius maxRadius n =
+    -- coded using explicit recursion because each point is dependent on the
+    -- current value of n to determine its angle offset
     if n == 0 then
         Random.Extra.constant []
     else
@@ -160,9 +166,7 @@ asteroidPoints' segAngleDelta minRadius maxRadius n =
             maxAngle =
                 segAngleDelta * 0.3
         in
-            Random.float minAngle maxAngle
-                `Random.andThen` \angle ->
-                                    Random.float minRadius maxRadius
-                                        `Random.andThen` \radius ->
-                                                            Random.map ((::) (initPoint (angle + angleOffset) radius))
-                                                                (asteroidPoints' segAngleDelta minRadius maxRadius (n - 1))
+            Random.pair (Random.float minAngle maxAngle) (Random.float minRadius maxRadius)
+                `andThen` \angle radius ->
+                            Random.map ((::) (initPoint (angle + angleOffset) radius))
+                                (asteroidPoints' segAngleDelta minRadius maxRadius (n - 1))

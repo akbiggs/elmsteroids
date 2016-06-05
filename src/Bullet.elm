@@ -38,6 +38,7 @@ init pos vel timeUntilDeath =
 
 type Msg
     = SecondsElapsed Time
+    | Explode
 
 
 type alias Effect =
@@ -53,6 +54,9 @@ update msg bullet =
                     (moveBullet dt >> killBullet dt) bullet
             in
                 ( updatedBullet, [] )
+
+        Explode ->
+            ( Nothing, [] )
 
 
 moveBullet : Time -> Model -> Model

@@ -196,25 +196,29 @@ filterAlive =
     List.filterMap identity
 
 
-ignoreUnusedEffects : List () -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-ignoreUnusedEffects _ =
+ignoreUnusedEffect : () -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+ignoreUnusedEffect _ =
     identity
+
+
+processEffect : (effect -> Model -> ( Model, Cmd Msg )) -> effect -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+processEffect processEffectFn effect ( game, cmd ) =
+    let
+        ( updatedGame, effectCmd ) =
+            processEffectFn effect game
+
+        batchedCmd =
+            Cmd.batch [ cmd, effectCmd ]
+    in
+        ( updatedGame, batchedCmd )
 
 
 processEffects : (effect -> Model -> ( Model, Cmd Msg )) -> List effect -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 processEffects processEffectFn effects model =
-    let
-        processSingleEffect effect ( game, cmd ) =
-            let
-                ( updatedGame, effectCmd ) =
-                    processEffectFn effect game
-
-                batchedCmd =
-                    Cmd.batch [ cmd, effectCmd ]
-            in
-                ( updatedGame, batchedCmd )
-    in
-        List.foldl processSingleEffect model effects
+    -- this function is a simple fold, but the order in which arguments are passed
+    -- means we don't have to create a lambda when passing the model in using
+    -- the (|>) and (<|) operators.
+    List.foldl processEffect model effects
 
 
 processPlayerEffect : Player.Effect -> Model -> ( Model, Cmd Msg )
@@ -226,36 +230,62 @@ processPlayerEffect effect model =
         Player.SpawnBullet bullet ->
             update (SpawnBullets [ bullet ]) model
 
+        Player.SpawnSegmentParticles { velocity, segments } ->
+            model
+                ! [ Random.generate SpawnSegmentParticles
+                        <| SegmentParticleRandom.particles velocity segments
+                  ]
+
 
 processAsteroidEffect : Asteroid.Effect -> Model -> ( Model, Cmd Msg )
 processAsteroidEffect effect model =
     case effect of
         Asteroid.SpawnSegmentParticles { velocity, segments } ->
-            let
-                particlesGenerator =
-                    SegmentParticleRandom.particles velocity segments
+            model
+                ! [ Random.generate SpawnSegmentParticles
+                        <| SegmentParticleRandom.particles velocity segments
+                  ]
 
-                cmds =
-                    [ Random.generate SpawnSegmentParticles particlesGenerator
-                    ]
-            in
-                model ! cmds
+        Asteroid.SpawnSplitAsteroids { parentScale, position } ->
+            model
+                ! [ Random.generate SpawnAsteroids
+                        <| AsteroidRandom.asteroidGroupWithScaleAt (parentScale - 1) position
+                  ]
 
-        Asteroid.SpawnSplitAsteroids { fromScale, position } ->
-            let
-                splitAsteroidsGenerator =
-                    AsteroidRandom.asteroidGroupWithScaleAt (fromScale - 1) position
 
-                cmds =
-                    [ Random.generate SpawnAsteroids splitAsteroidsGenerator
-                    ]
-            in
-                model ! cmds
+processBulletEffect : Bullet.Effect -> Model -> ( Model, Cmd Msg )
+processBulletEffect =
+    ignoreUnusedEffect
+
+
+processCollisionEffect : Collisions.Effect -> Model -> ( Model, Cmd Msg )
+processCollisionEffect effect model =
+    case effect of
+        Collisions.PlayerEffect playerEffect ->
+            processPlayerEffect playerEffect
+
+        Collisions.AsteroidEffect asteroidEffect ->
+            processAsteroidEffect asteroidEffect
+
+        Collisions.BulletEffect bulletEffect ->
+            processBulletEffect bulletEffect
 
 
 handleCollisions : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 handleCollisions ( model, cmd ) =
-    model
+    let
+        objects =
+            { player = model.player
+            , bullets = model.bullets
+            , asteroids = model.asteroids
+            }
+
+        ( updatedObjects, collisionEffects ) =
+            Collisions.handleCollisions objects
+    in
+        updatedObjects
+            ! cmd
+            |> processEffects processCollisionEffect collisionEffects
 
 
 
@@ -279,18 +309,21 @@ subscriptions game =
 view : Model -> Html Msg
 view game =
     let
-        scene =
+        background =
+            Collage.rect Bounds.width Bounds.height
+                |> Collage.filled Color.black
+
+        objects =
             Collage.group
                 [ drawGroup Asteroid.draw game.asteroids
                 , drawMaybe Player.draw game.player
                 , drawGroup Bullet.draw game.bullets
                 ]
+
+        scene =
+            [ background, objects ]
     in
-        Collage.collage (floor Bounds.width)
-            (floor Bounds.height)
-            [ Collage.rect Bounds.width Bounds.height |> Collage.filled Color.black
-            , scene
-            ]
+        Collage.collage (floor Bounds.width) (floor Bounds.height) scene
             |> Element.toHtml
 
 
