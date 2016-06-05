@@ -59,6 +59,7 @@ type GameState
 type alias Model =
     { state : GameState
     , keyboard : Keyboard.Model
+    , score : Int
     , bullets : List Bullet.Model
     , asteroids : List Asteroid.Model
     , player : Maybe Player.Model
@@ -82,6 +83,7 @@ init =
     in
         { state = Title
         , keyboard = keyboard
+        , score = 0
         , bullets = []
         , asteroids = []
         , segmentParticles = []
@@ -100,6 +102,7 @@ type Msg
     = Tick Time
     | KeyboardMsg Keyboard.Msg
     | PlaySound String
+    | IncreaseScore Int
     | SpawnAsteroids (List Asteroid.Model)
     | SpawnBullets (List Bullet.Model)
     | SpawnSegmentParticles (List SegmentParticle.Model)
@@ -142,17 +145,19 @@ update msg game =
                         game.player
 
                 ( updatedGame, gameCmd ) =
-                    { game
-                        | bullets = bullets
-                        , asteroids = asteroids
-                        , player = player
-                    }
-                        ! []
-                        |> processEffects processPlayerEffect playerEffects
-                        |> processEffects processAsteroidEffect asteroidEffects
-                        |> handleCollisions
+                    (,)
+                        { game
+                            | bullets = bullets
+                            , asteroids = asteroids
+                            , player = player
+                        }
+                        Cmd.none
+
+                -- |> processEffects processPlayerEffect playerEffects
+                -- |> processEffects processAsteroidEffect asteroidEffects
+                -- |> handleCollisions
             in
-                updatedGame ! [ gameCmd ]
+                (,) updatedGame gameCmd
 
         KeyboardMsg keyMsg ->
             let
@@ -171,6 +176,12 @@ update msg game =
         PlaySound filename ->
             -- TODO
             game ! []
+
+        IncreaseScore amount ->
+            { game
+                | score = game.score + amount
+            }
+                ! []
 
         SpawnAsteroids asteroids ->
             { game
@@ -196,9 +207,9 @@ filterAlive =
     List.filterMap identity
 
 
-ignoreUnusedEffect : () -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-ignoreUnusedEffect _ =
-    identity
+ignoreUnusedEffect : () -> Model -> ( Model, Cmd Msg )
+ignoreUnusedEffect _ model =
+    model ! []
 
 
 processEffect : (effect -> Model -> ( Model, Cmd Msg )) -> effect -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
@@ -218,7 +229,7 @@ processEffects processEffectFn effects model =
     -- this function is a simple fold, but the order in which arguments are passed
     -- means we don't have to create a lambda when passing the model in using
     -- the (|>) and (<|) operators.
-    List.foldl processEffect model effects
+    List.foldl (processEffect processEffectFn) model effects
 
 
 processPlayerEffect : Player.Effect -> Model -> ( Model, Cmd Msg )
@@ -252,6 +263,9 @@ processAsteroidEffect effect model =
                         <| AsteroidRandom.asteroidGroupWithScaleAt (parentScale - 1) position
                   ]
 
+        Asteroid.IncreaseScore amount ->
+            update (IncreaseScore amount) model
+
 
 processBulletEffect : Bullet.Effect -> Model -> ( Model, Cmd Msg )
 processBulletEffect =
@@ -259,7 +273,7 @@ processBulletEffect =
 
 
 processCollisionEffect : Collisions.Effect -> Model -> ( Model, Cmd Msg )
-processCollisionEffect effect model =
+processCollisionEffect effect =
     case effect of
         Collisions.PlayerEffect playerEffect ->
             processPlayerEffect playerEffect
@@ -282,9 +296,16 @@ handleCollisions ( model, cmd ) =
 
         ( updatedObjects, collisionEffects ) =
             Collisions.handleCollisions objects
+
+        updatedGame =
+            { model
+                | player = updatedObjects.player
+                , bullets = updatedObjects.bullets
+                , asteroids = updatedObjects.asteroids
+            }
     in
-        updatedObjects
-            ! cmd
+        updatedGame
+            ! [ cmd ]
             |> processEffects processCollisionEffect collisionEffects
 
 

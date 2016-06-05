@@ -167,6 +167,6 @@ asteroidPoints' segAngleDelta minRadius maxRadius n =
                 segAngleDelta * 0.3
         in
             Random.pair (Random.float minAngle maxAngle) (Random.float minRadius maxRadius)
-                `andThen` \angle radius ->
+                `andThen` \( angle, radius ) ->
                             Random.map ((::) (initPoint (angle + angleOffset) radius))
                                 (asteroidPoints' segAngleDelta minRadius maxRadius (n - 1))

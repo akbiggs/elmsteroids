@@ -1,4 +1,4 @@
-module Player exposing (Model, Msg(..), Effect(..), init, update, draw)
+module Player exposing (Model, Msg(..), Effect(..), init, update, draw, wrappedSegments, wrappedTriangles)
 
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS
@@ -14,6 +14,7 @@ import Vector exposing (Vector)
 import Ship
 import Bullet
 import Segment exposing (Segment)
+import Triangle exposing (Triangle)
 
 
 -- </editor-fold> END IMPORTS
@@ -59,8 +60,13 @@ front model =
 
 
 wrappedSegments : Model -> List Segment
-wrappedSegments =
+wrappedSegments model =
     Ship.wrappedSegments model.position model.rotation
+
+
+wrappedTriangles : Model -> List Triangle
+wrappedTriangles model =
+    Ship.wrappedTriangles model.position model.rotation
 
 
 
@@ -169,7 +175,7 @@ update msg model =
                 segmentParticleEffect =
                     SpawnSegmentParticles
                         { velocity = model.velocity
-                        , segments = Player.wrappedSegments model
+                        , segments = wrappedSegments model
                         }
 
                 effects =

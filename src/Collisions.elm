@@ -1,4 +1,4 @@
-module Collisions exposing (handleCollisions, Effect)
+module Collisions exposing (handleCollisions, Effect(..))
 
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS
@@ -18,6 +18,7 @@ import Vector exposing (Vector)
 import Bullet
 import Ship
 import ComponentUtils exposing (updateGroup, updateMaybe)
+import Tuple2
 
 
 -- </editor-fold> END IMPORTS
@@ -44,9 +45,11 @@ handleCollisions objects =
 
         ( updatedBullets, bulletEffects ) =
             updateGroup (handleBulletCollisions objects) objects.bullets
+                |> Tuple2.mapFst (List.filterMap identity)
 
         ( updatedAsteroids, asteroidEffects ) =
             updateGroup (handleAsteroidCollisions objects) objects.asteroids
+                |> Tuple2.mapFst (List.filterMap identity)
 
         updatedObjects =
             { player = updatedPlayer
@@ -64,7 +67,7 @@ handleCollisions objects =
         ( updatedObjects, effects )
 
 
-handlePlayerCollisions : Objects -> Player -> ( Maybe Player, List Player.Effect )
+handlePlayerCollisions : Objects -> Player.Model -> ( Maybe Player.Model, List Player.Effect )
 handlePlayerCollisions { asteroids } player =
     if List.any (isPlayerCollidingWithAsteroid player) asteroids then
         Player.update Player.Die player
@@ -72,7 +75,7 @@ handlePlayerCollisions { asteroids } player =
         ( Just player, [] )
 
 
-handleBulletCollisions : Objects -> Bullet -> ( Maybe Bullet, List Bullet.Effect )
+handleBulletCollisions : Objects -> Bullet.Model -> ( Maybe Bullet.Model, List Bullet.Effect )
 handleBulletCollisions { asteroids } bullet =
     if List.any (isBulletCollidingWithAsteroid bullet) asteroids then
         Bullet.update Bullet.Explode bullet
@@ -80,7 +83,7 @@ handleBulletCollisions { asteroids } bullet =
         ( Just bullet, [] )
 
 
-handleAsteroidCollisions : Objects -> Asteroid -> ( Maybe Asteroid, List Asteroid.Effect )
+handleAsteroidCollisions : Objects -> Asteroid.Model -> ( Maybe Asteroid.Model, List Asteroid.Effect )
 handleAsteroidCollisions { bullets } asteroid =
     if List.any (\x -> isBulletCollidingWithAsteroid x asteroid) bullets then
         Asteroid.update Asteroid.BlowUp asteroid
@@ -96,17 +99,17 @@ isBulletCollidingWithAsteroid bullet asteroid =
 isPlayerCollidingWithAsteroid : Player.Model -> Asteroid.Model -> Bool
 isPlayerCollidingWithAsteroid player asteroid =
     let
+        shipTriangles =
+            Player.wrappedTriangles player
+
         shipSegments =
-            Player.segments player
+            Player.wrappedSegments player
 
         asteroidSegments =
             Asteroid.wrappedSegments asteroid
 
         segmentPairs =
             allPairs shipSegments asteroidSegments
-
-        isInsideAsteroid x =
-            Asteroid.liesInside x asteroid
     in
         any (uncurry intersect) segmentPairs
             || any
@@ -120,5 +123,10 @@ isPlayerCollidingWithAsteroid player asteroid =
 
 allPairs : List a -> List b -> List ( a, b )
 allPairs xs ys =
-    List.map (\x -> List.map ((,) x) ys)
-        xs
+    List.map (\x -> pairsWith x ys) xs
+        |> List.concat
+
+
+pairsWith : a -> List b -> List ( a, b )
+pairsWith x ys =
+    List.map ((,) x) ys
