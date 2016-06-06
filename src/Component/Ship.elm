@@ -1,4 +1,4 @@
-module Ship exposing (front, triangle, draw, wrappedSegments, wrappedTriangles)
+module Component.Ship exposing (front, triangle, draw, wrappedSegments, wrappedTriangles)
 
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS

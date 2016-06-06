@@ -1,4 +1,4 @@
-module Bullet exposing (Model, Msg(..), Effect, init, update, draw)
+module Component.Bullet exposing (Model, Msg(..), Effect, init, update, draw)
 
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS

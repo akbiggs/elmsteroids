@@ -1,4 +1,4 @@
-module AsteroidRandom exposing (asteroidGroup, asteroidGroupWithScaleAt)
+module Component.AsteroidRandom exposing (asteroidGroup, asteroidGroupWithScaleAt)
 
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS
@@ -9,7 +9,7 @@ import Random.Extra
 
 -- LOCAL IMPORTS
 
-import Asteroid exposing (AsteroidSize)
+import Component.Asteroid as Asteroid exposing (AsteroidSize)
 import Bounds
 import Vector exposing (Vector)
 

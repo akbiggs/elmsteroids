@@ -1,4 +1,4 @@
-module Asteroid exposing (Model, AsteroidSize, Msg(..), Effect(..), update, draw, liesInside, wrappedSegments)
+module Component.Asteroid exposing (Model, AsteroidSize, Msg(..), Effect(..), update, draw, liesInside, wrappedSegments)
 
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS
@@ -6,17 +6,14 @@ module Asteroid exposing (Model, AsteroidSize, Msg(..), Effect(..), update, draw
 import List exposing (map, concatMap, any)
 import Collage exposing (Form, group, polygon, filled, outlined, defaultLine)
 import Color exposing (..)
-import Random exposing (Seed, int, float, step)
 import Time exposing (Time)
 
 
 -- LOCAL IMPORTS
 
-import State exposing (..)
 import Vector exposing (..)
 import Segment exposing (Segment)
 import Triangle exposing (Triangle)
-import Bounds
 import Wrap
 
 

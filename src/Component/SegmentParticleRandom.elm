@@ -1,4 +1,4 @@
-module SegmentParticleRandom exposing (particles)
+module Component.SegmentParticleRandom exposing (particles)
 
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS
@@ -10,7 +10,7 @@ import Random.Extra as RandomExtra
 
 -- LOCAL IMPORTS
 
-import SegmentParticle
+import Component.SegmentParticle as SegmentParticle
 import Vector exposing (Vector)
 import Segment exposing (Segment)
 

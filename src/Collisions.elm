@@ -9,10 +9,10 @@ import List exposing (map, concat, concatMap, any)
 -- LOCAL IMPORTS
 
 import Segment exposing (..)
-import Player
-import Asteroid exposing (liesInside)
-import Bullet
-import Update
+import Component.Player as Player
+import Component.Asteroid as Asteroid exposing (liesInside)
+import Component.Bullet as Bullet
+import Component.Update as Update
 import Tuple2
 
 
@@ -36,14 +36,14 @@ handleCollisions : Objects -> ( Objects, List Effect )
 handleCollisions objects =
     let
         ( updatedPlayer, playerEffects ) =
-            Update.maybe (handlePlayerCollisions objects) objects.player
+            Update.onMaybe (handlePlayerCollisions objects) objects.player
 
         ( updatedBullets, bulletEffects ) =
-            Update.group (handleBulletCollisions objects) objects.bullets
+            Update.onGroup (handleBulletCollisions objects) objects.bullets
                 |> Tuple2.mapFst (List.filterMap identity)
 
         ( updatedAsteroids, asteroidEffects ) =
-            Update.group (handleAsteroidCollisions objects) objects.asteroids
+            Update.onGroup (handleAsteroidCollisions objects) objects.asteroids
                 |> Tuple2.mapFst (List.filterMap identity)
 
         updatedObjects =

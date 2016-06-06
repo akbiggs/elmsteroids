@@ -1,4 +1,4 @@
-module StarRandom exposing (starGroup)
+module Component.StarRandom exposing (starGroup)
 
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS
@@ -8,7 +8,7 @@ import Random exposing (Generator, andThen)
 
 -- LOCAL IMPORTS
 
-import Star
+import Component.Star as Star
 import Bounds
 import Vector exposing (Vector)
 

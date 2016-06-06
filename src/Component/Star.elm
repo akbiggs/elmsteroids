@@ -1,4 +1,4 @@
-module Star exposing (Model, Msg(..), Effect, update, draw)
+module Component.Star exposing (Model, Msg(..), Effect, update, draw)
 
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS
@@ -42,7 +42,7 @@ update msg model =
         SecondsElapsed dt ->
             let
                 blinkPhase =
-                  model.blinkPhase + model.blinkFrequency * dt
+                    model.blinkPhase + model.blinkFrequency * dt
 
                 updatedModel =
                     { model

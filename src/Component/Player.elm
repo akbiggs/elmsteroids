@@ -1,4 +1,4 @@
-module Player exposing (Model, Msg(..), Effect(..), init, update, draw, wrappedSegments, wrappedTriangles)
+module Component.Player exposing (Model, Msg(..), Effect(..), init, update, draw, wrappedSegments, wrappedTriangles)
 
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS
@@ -9,8 +9,8 @@ import Collage exposing (Form)
 -- LOCAL IMPORTS
 
 import Vector exposing (Vector)
-import Ship
-import Bullet
+import Component.Ship as Ship
+import Component.Bullet as Bullet
 import Segment exposing (Segment)
 import Triangle exposing (Triangle)
 

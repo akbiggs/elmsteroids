@@ -1,4 +1,4 @@
-module SegmentParticle exposing (Model, Msg(..), Effect, update, draw)
+module Component.SegmentParticle exposing (Model, Msg(..), Effect, update, draw)
 
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS
@@ -6,12 +6,10 @@ module SegmentParticle exposing (Model, Msg(..), Effect, update, draw)
 import List exposing (map, filterMap)
 import Collage exposing (Form, group, path, traced, defaultLine, move, alpha)
 import Color exposing (..)
-import Random exposing (Seed, float, step)
 
 
 -- LOCAL IMPORTS
 
-import State exposing (..)
 import Vector exposing (..)
 import Segment exposing (Segment, center)
 

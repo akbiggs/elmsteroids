@@ -17,18 +17,19 @@ import Tuple2
 
 -- LOCAL IMPORTS
 
-import Update
-import Bullet
-import Asteroid
-import AsteroidRandom
-import SegmentParticle
-import SegmentParticleRandom
+import Component.Update as Update
+import Component.Bullet as Bullet
+import Component.Asteroid as Asteroid
+import Component.AsteroidRandom as AsteroidRandom
+import Component.SegmentParticle as SegmentParticle
+import Component.SegmentParticleRandom as SegmentParticleRandom
+import Component.Player as Player
+import Component.Star as Star
+import Component.StarRandom as StarRandom
 import Bounds
-import Player
 import Vector
 import Collisions
-import Star
-import StarRandom
+import DrawUtilities
 
 
 -- </editor-fold>
@@ -124,17 +125,17 @@ update msg game =
 
                 ( bullets, bulletEffects ) =
                     game.bullets
-                        |> Update.group (Bullet.update (Bullet.SecondsElapsed dtSeconds))
+                        |> Update.onGroup (Bullet.update (Bullet.SecondsElapsed dtSeconds))
                         |> Tuple2.mapFst filterAlive
 
                 ( asteroids, asteroidEffects ) =
                     game.asteroids
-                        |> Update.group (Asteroid.update (Asteroid.SecondsElapsed dtSeconds))
+                        |> Update.onGroup (Asteroid.update (Asteroid.SecondsElapsed dtSeconds))
                         |> Tuple2.mapFst filterAlive
 
                 ( player, playerEffects ) =
-                    Update.maybe
-                        (Update.foldl
+                    Update.onMaybe
+                        (Update.combine
                             [ Update.onlyIf (Keyboard.isPressed Keyboard.ArrowUp game.keyboard)
                                 (Player.update Player.Accelerate)
                             , Update.onlyIf (Keyboard.isPressed Keyboard.ArrowDown game.keyboard)
@@ -152,12 +153,12 @@ update msg game =
 
                 ( segmentParticles, segmentParticleEffects ) =
                     game.segmentParticles
-                        |> Update.group (SegmentParticle.update (SegmentParticle.SecondsElapsed dtSeconds))
+                        |> Update.onGroup (SegmentParticle.update (SegmentParticle.SecondsElapsed dtSeconds))
                         |> Tuple2.mapFst filterAlive
 
                 ( stars, starEffects ) =
                     game.stars
-                        |> Update.group (Star.update (Star.SecondsElapsed dtSeconds))
+                        |> Update.onGroup (Star.update (Star.SecondsElapsed dtSeconds))
                         |> Tuple2.mapFst filterAlive
 
                 ( updatedGame, gameCmd ) =
@@ -374,7 +375,7 @@ view game =
                 [ [ background ]
                 , List.map Star.draw game.stars
                 , List.map Asteroid.draw game.asteroids
-                , [ Update.drawMaybe Player.draw game.player ]
+                , [ DrawUtilities.drawMaybe Player.draw game.player ]
                 , List.map Bullet.draw game.bullets
                 , List.map SegmentParticle.draw game.segmentParticles
                 ]
