@@ -4,8 +4,6 @@ module Player exposing (Model, Msg(..), Effect(..), init, update, draw, wrappedS
 -- EXTERNAL IMPORTS
 
 import Collage exposing (Form)
-import Keyboard.Extra as Keyboard
-import Time exposing (Time)
 
 
 -- LOCAL IMPORTS

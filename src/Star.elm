@@ -3,16 +3,13 @@ module Star exposing (Model, Msg(..), Effect, update, draw)
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS
 
-import List
 import Color
 import Collage exposing (Form, group, rect, filled, move, alpha)
-import Random
 
 
 -- LOCAL IMPORTS
 
 import Vector exposing (Vector)
-import Bounds
 
 
 -- </editor-fold> END IMPORTS
@@ -44,9 +41,12 @@ update msg model =
     case msg of
         SecondsElapsed dt ->
             let
+                blinkPhase =
+                  model.blinkPhase + model.blinkFrequency * dt
+
                 updatedModel =
                     { model
-                        | blinkPhase = model.blinkPhase + model.blinkFrequency * dt
+                        | blinkPhase = blinkPhase
                     }
             in
                 ( Just updatedModel, [] )

@@ -27,10 +27,10 @@ starGroup =
 star : Generator Star.Model
 star =
     Random.map3
-        (\pos phaseValue freq ->
-            { position = pos
+        (\posValue phaseValue freqValue ->
+            { position = posValue
             , blinkPhase = phaseValue
-            , blinkFrequency = freq
+            , blinkFrequency = freqValue
             }
         )
         position
