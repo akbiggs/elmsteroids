@@ -332,15 +332,13 @@ view game =
             Collage.rect Bounds.width Bounds.height
                 |> Collage.filled Color.black
 
-        objects =
-            Collage.group
-                [ drawGroup Asteroid.draw game.asteroids
-                , drawMaybe Player.draw game.player
-                , drawGroup Bullet.draw game.bullets
-                ]
-
         scene =
-            [ background, objects ]
+            List.concat
+                [ [ background ]
+                , List.map Asteroid.draw game.asteroids
+                , [ drawMaybe Player.draw game.player ]
+                , List.map Bullet.draw game.bullets
+                ]
     in
         Collage.collage (floor Bounds.width) (floor Bounds.height) scene
             |> Element.toHtml
