@@ -144,15 +144,23 @@ update msg game =
                         )
                         game.player
 
+                ( segmentParticles, segmentParticleEffects ) =
+                    game.segmentParticles
+                        |> updateGroup (SegmentParticle.update (SegmentParticle.SecondsElapsed dtSeconds))
+                        |> Tuple2.mapFst filterAlive
+
                 ( updatedGame, gameCmd ) =
                     { game
                         | bullets = bullets
                         , asteroids = asteroids
                         , player = player
+                        , segmentParticles = segmentParticles
                     }
                         ! []
                         |> processEffects processPlayerEffect playerEffects
                         |> processEffects processAsteroidEffect asteroidEffects
+                        |> processEffects processBulletEffect bulletEffects
+                        |> processEffects processSegmentParticleEffect segmentParticleEffects
                         |> handleCollisions
             in
                 updatedGame ! [ gameCmd ]
@@ -270,6 +278,11 @@ processBulletEffect =
     ignoreUnusedEffect
 
 
+processSegmentParticleEffect : SegmentParticle.Effect -> Model -> ( Model, Cmd Msg )
+processSegmentParticleEffect =
+    ignoreUnusedEffect
+
+
 processCollisionEffect : Collisions.Effect -> Model -> ( Model, Cmd Msg )
 processCollisionEffect effect =
     case effect of
@@ -338,6 +351,7 @@ view game =
                 , List.map Asteroid.draw game.asteroids
                 , [ drawMaybe Player.draw game.player ]
                 , List.map Bullet.draw game.bullets
+                , List.map SegmentParticle.draw game.segmentParticles
                 ]
     in
         Collage.collage (floor Bounds.width) (floor Bounds.height) scene

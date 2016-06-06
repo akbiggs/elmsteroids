@@ -27,6 +27,7 @@ type alias Model =
     , velocityDelta : Float
     , rotation : Float
     , rotationDelta : Float
+    , reloadTime : Float
     }
 
 
@@ -39,6 +40,7 @@ init pos =
             , velocityDelta = 0
             , rotation = 0
             , rotationDelta = 0
+            , reloadTime = 0
             }
     in
         ( initialModel, [] )
@@ -110,6 +112,9 @@ update msg model =
                 rotation =
                     model.rotation + model.rotationDelta * dt
 
+                reloadTime =
+                    max (model.reloadTime - dt) 0
+
                 updatedModel =
                     { model
                         | position = position
@@ -117,6 +122,7 @@ update msg model =
                         , velocityDelta = 0
                         , rotation = rotation
                         , rotationDelta = 0
+                        , reloadTime = reloadTime
                     }
             in
                 ( Just updatedModel, [] )
@@ -158,17 +164,25 @@ update msg model =
                 ( Just updatedModel, [] )
 
         FireBullet ->
-            let
-                bullet =
-                    Bullet.init (front model)
-                        (model.velocity |> Vector.add (Vector.rotate model.rotation ( 0, 80 )))
-                        3.0
+            if model.reloadTime > 0 then
+                ( Just model, [] )
+            else
+                let
+                    bullet =
+                        Bullet.init (front model)
+                            (model.velocity |> Vector.add (Vector.rotate model.rotation ( 0, 80 )))
+                            3.0
 
-                effects =
-                    [ SpawnBullet bullet
-                    ]
-            in
-                ( Just model, effects )
+                    updatedModel =
+                        { model
+                            | reloadTime = 0.3
+                        }
+
+                    effects =
+                        [ SpawnBullet bullet
+                        ]
+                in
+                    ( Just updatedModel, effects )
 
         Die ->
             let
