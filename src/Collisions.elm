@@ -4,20 +4,15 @@ module Collisions exposing (handleCollisions, Effect(..))
 -- EXTERNAL IMPORTS
 
 import List exposing (map, concat, concatMap, any)
-import Random exposing (Seed)
 
 
 -- LOCAL IMPORTS
 
-import State exposing (..)
 import Segment exposing (..)
-import Triangle
 import Player
 import Asteroid exposing (liesInside)
-import Vector exposing (Vector)
 import Bullet
-import Ship
-import ComponentUtils exposing (updateGroup, updateMaybe)
+import Update
 import Tuple2
 
 
@@ -41,14 +36,14 @@ handleCollisions : Objects -> ( Objects, List Effect )
 handleCollisions objects =
     let
         ( updatedPlayer, playerEffects ) =
-            updateMaybe (handlePlayerCollisions objects) objects.player
+            Update.maybe (handlePlayerCollisions objects) objects.player
 
         ( updatedBullets, bulletEffects ) =
-            updateGroup (handleBulletCollisions objects) objects.bullets
+            Update.group (handleBulletCollisions objects) objects.bullets
                 |> Tuple2.mapFst (List.filterMap identity)
 
         ( updatedAsteroids, asteroidEffects ) =
-            updateGroup (handleAsteroidCollisions objects) objects.asteroids
+            Update.group (handleAsteroidCollisions objects) objects.asteroids
                 |> Tuple2.mapFst (List.filterMap identity)
 
         updatedObjects =

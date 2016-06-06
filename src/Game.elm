@@ -17,7 +17,7 @@ import Tuple2
 
 -- LOCAL IMPORTS
 
-import ComponentUtils exposing (..)
+import Update
 import Bullet
 import Asteroid
 import AsteroidRandom
@@ -124,26 +124,26 @@ update msg game =
 
                 ( bullets, bulletEffects ) =
                     game.bullets
-                        |> updateGroup (Bullet.update (Bullet.SecondsElapsed dtSeconds))
+                        |> Update.group (Bullet.update (Bullet.SecondsElapsed dtSeconds))
                         |> Tuple2.mapFst filterAlive
 
                 ( asteroids, asteroidEffects ) =
                     game.asteroids
-                        |> updateGroup (Asteroid.update (Asteroid.SecondsElapsed dtSeconds))
+                        |> Update.group (Asteroid.update (Asteroid.SecondsElapsed dtSeconds))
                         |> Tuple2.mapFst filterAlive
 
                 ( player, playerEffects ) =
-                    updateMaybe
-                        (foldlUpdates
-                            [ updateIf (Keyboard.isPressed Keyboard.ArrowUp game.keyboard)
+                    Update.maybe
+                        (Update.foldl
+                            [ Update.onlyIf (Keyboard.isPressed Keyboard.ArrowUp game.keyboard)
                                 (Player.update Player.Accelerate)
-                            , updateIf (Keyboard.isPressed Keyboard.ArrowDown game.keyboard)
+                            , Update.onlyIf (Keyboard.isPressed Keyboard.ArrowDown game.keyboard)
                                 (Player.update Player.Decelerate)
-                            , updateIf (Keyboard.isPressed Keyboard.ArrowLeft game.keyboard)
+                            , Update.onlyIf (Keyboard.isPressed Keyboard.ArrowLeft game.keyboard)
                                 (Player.update Player.RotateLeft)
-                            , updateIf (Keyboard.isPressed Keyboard.ArrowRight game.keyboard)
+                            , Update.onlyIf (Keyboard.isPressed Keyboard.ArrowRight game.keyboard)
                                 (Player.update Player.RotateRight)
-                            , updateIf (Keyboard.isPressed Keyboard.Space game.keyboard)
+                            , Update.onlyIf (Keyboard.isPressed Keyboard.Space game.keyboard)
                                 (Player.update Player.FireBullet)
                             , Player.update (Player.SecondsElapsed dtSeconds)
                             ]
@@ -152,12 +152,12 @@ update msg game =
 
                 ( segmentParticles, segmentParticleEffects ) =
                     game.segmentParticles
-                        |> updateGroup (SegmentParticle.update (SegmentParticle.SecondsElapsed dtSeconds))
+                        |> Update.group (SegmentParticle.update (SegmentParticle.SecondsElapsed dtSeconds))
                         |> Tuple2.mapFst filterAlive
 
                 ( stars, starEffects ) =
                     game.stars
-                        |> updateGroup (Star.update (Star.SecondsElapsed dtSeconds))
+                        |> Update.group (Star.update (Star.SecondsElapsed dtSeconds))
                         |> Tuple2.mapFst filterAlive
 
                 ( updatedGame, gameCmd ) =
@@ -374,7 +374,7 @@ view game =
                 [ [ background ]
                 , List.map Star.draw game.stars
                 , List.map Asteroid.draw game.asteroids
-                , [ drawMaybe Player.draw game.player ]
+                , [ Update.drawMaybe Player.draw game.player ]
                 , List.map Bullet.draw game.bullets
                 , List.map SegmentParticle.draw game.segmentParticles
                 ]
