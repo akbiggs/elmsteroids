@@ -27,7 +27,7 @@ onGroup updateFn xs =
 combine : List (a -> ( Maybe a, List effect )) -> a -> ( Maybe a, List effect )
 combine updateFns obj =
     let
-        updateFnsForMaybe =
+        maybeUpdateFns =
             List.map onMaybe updateFns
     in
-        List.foldl Effects.mapWithEffects (Effects.start (Just obj)) updateFnsForMaybe
+        List.foldl Effects.mapWithEffects (Effects.start (Just obj)) maybeUpdateFns
