@@ -1,46 +1,73 @@
-module Star exposing (Model, init, tick, draw)
+module Star exposing (Model, Msg(..), Effect, update, draw)
 
-import List exposing (map)
-import Color exposing (..)
+-- <editor-fold> IMPORTS
+-- EXTERNAL IMPORTS
+
+import List
+import Color
 import Collage exposing (Form, group, rect, filled, move, alpha)
-import Random exposing (Seed, int, float, step)
-import State exposing (..)
-import Vector exposing (..)
-import Bounds exposing (..)
+import Random
 
--- MODEL
+
+-- LOCAL IMPORTS
+
+import Vector exposing (Vector)
+import Bounds
+
+
+-- </editor-fold> END IMPORTS
+-- <editor-fold> MODEL
+
 
 type alias Model =
-  { position : Vector
-  , blinkPhase : Float
-  , blinkFrequency : Float
-  }
+    { position : Vector
+    , blinkPhase : Float
+    , blinkFrequency : Float
+    }
 
-init : State Seed (List Model)
-init = step (int 80 100) >>= init'
 
-init' : Int -> State Seed (List Model)
-init' count =
-  if count == 0 then return []
-  else (::) <$> initStar <*> init' (count - 1)
 
-initStar : State Seed (Model)
-initStar =
-  step (float left right) >>= \x ->
-    step (float bottom top) >>= \y ->
-      step (float 0 (pi * 2)) >>= \phase ->
-        step (float 0 2) >>= \frequency ->
-          return
-            { position = (x, y)
-            , blinkPhase = phase
-            , blinkFrequency = frequency
-            }
+-- </editor-fold> END MODEL
+-- <editor-fold> UPDATE
 
-tick : Float -> Model -> Model
-tick timeDelta star =
-  { star | blinkPhase = star.blinkPhase + star.blinkFrequency * timeDelta }
+
+type Msg
+    = SecondsElapsed Float
+
+
+type alias Effect =
+    ()
+
+
+update : Msg -> Model -> ( Maybe Model, List Effect )
+update msg model =
+    case msg of
+        SecondsElapsed dt ->
+            let
+                updatedModel =
+                    { model
+                        | blinkPhase = model.blinkPhase + model.blinkFrequency * dt
+                    }
+            in
+                ( Just updatedModel, [] )
+
+
+
+-- </editor-fold> END UPDATE
+-- <editor-fold> VIEW
+
 
 draw : Model -> Form
-draw star =
-  let blink = sin(star.blinkPhase) * 0.4 + 0.6
-  in rect 1 1 |> filled white |> move star.position |> alpha blink
+draw model =
+    let
+        blink =
+            sin (model.blinkPhase) * 0.4 + 0.6
+    in
+        rect 1 1
+            |> filled Color.white
+            |> move model.position
+            |> alpha blink
+
+
+
+-- </editor-fold>

@@ -27,6 +27,8 @@ import Bounds
 import Player
 import Vector
 import Collisions
+import Star
+import StarRandom
 
 
 -- </editor-fold>
@@ -62,8 +64,9 @@ type alias Model =
     , score : Int
     , bullets : List Bullet.Model
     , asteroids : List Asteroid.Model
-    , player : Maybe Player.Model
     , segmentParticles : List SegmentParticle.Model
+    , stars : List Star.Model
+    , player : Maybe Player.Model
     }
 
 
@@ -78,6 +81,7 @@ init =
 
         cmds =
             [ Random.generate SpawnAsteroids AsteroidRandom.asteroidGroup
+            , Random.generate SpawnStars StarRandom.starGroup
             , Cmd.map KeyboardMsg keyboardCmd
             ]
     in
@@ -87,6 +91,7 @@ init =
         , bullets = []
         , asteroids = []
         , segmentParticles = []
+        , stars = []
         , player = Just player
         }
             ! cmds
@@ -106,6 +111,7 @@ type Msg
     | SpawnAsteroids (List Asteroid.Model)
     | SpawnBullets (List Bullet.Model)
     | SpawnSegmentParticles (List SegmentParticle.Model)
+    | SpawnStars (List Star.Model)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -149,18 +155,25 @@ update msg game =
                         |> updateGroup (SegmentParticle.update (SegmentParticle.SecondsElapsed dtSeconds))
                         |> Tuple2.mapFst filterAlive
 
+                ( stars, starEffects ) =
+                    game.stars
+                        |> updateGroup (Star.update (Star.SecondsElapsed dtSeconds))
+                        |> Tuple2.mapFst filterAlive
+
                 ( updatedGame, gameCmd ) =
                     { game
                         | bullets = bullets
                         , asteroids = asteroids
                         , player = player
                         , segmentParticles = segmentParticles
+                        , stars = stars
                     }
                         ! []
                         |> processEffects processPlayerEffect playerEffects
                         |> processEffects processAsteroidEffect asteroidEffects
                         |> processEffects processBulletEffect bulletEffects
                         |> processEffects processSegmentParticleEffect segmentParticleEffects
+                        |> processEffects processStarEffect starEffects
                         |> handleCollisions
             in
                 updatedGame ! [ gameCmd ]
@@ -204,6 +217,12 @@ update msg game =
         SpawnSegmentParticles segmentParticles ->
             { game
                 | segmentParticles = game.segmentParticles ++ segmentParticles
+            }
+                ! []
+
+        SpawnStars stars ->
+            { game
+                | stars = game.stars ++ stars
             }
                 ! []
 
@@ -283,6 +302,11 @@ processSegmentParticleEffect =
     ignoreUnusedEffect
 
 
+processStarEffect : Star.Effect -> Model -> ( Model, Cmd Msg )
+processStarEffect =
+    ignoreUnusedEffect
+
+
 processCollisionEffect : Collisions.Effect -> Model -> ( Model, Cmd Msg )
 processCollisionEffect effect =
     case effect of
@@ -348,6 +372,7 @@ view game =
         scene =
             List.concat
                 [ [ background ]
+                , List.map Star.draw game.stars
                 , List.map Asteroid.draw game.asteroids
                 , [ drawMaybe Player.draw game.player ]
                 , List.map Bullet.draw game.bullets
@@ -359,4 +384,4 @@ view game =
 
 
 
--- </editor-fold>
+-- </editor-fold> END VIEW
