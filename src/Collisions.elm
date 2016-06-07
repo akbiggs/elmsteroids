@@ -36,14 +36,14 @@ handleCollisions : Objects -> ( Objects, List Effect )
 handleCollisions objects =
     let
         ( updatedPlayer, playerEffects ) =
-            Update.onMaybe (handlePlayerCollisions objects) objects.player
+            Update.runOnMaybe (handlePlayerCollisions objects) objects.player
 
         ( updatedBullets, bulletEffects ) =
-            Update.onGroup (handleBulletCollisions objects) objects.bullets
-                |> Tuple2.mapFst (List.filterMap identity)
+            Update.runOnGroup (handleBulletCollisions objects) objects.bullets
+                |> Update.filterAliveObjects
 
         ( updatedAsteroids, asteroidEffects ) =
-            Update.onGroup (handleAsteroidCollisions objects) objects.asteroids
+            Update.runOnGroup (handleAsteroidCollisions objects) objects.asteroids
                 |> Tuple2.mapFst (List.filterMap identity)
 
         updatedObjects =

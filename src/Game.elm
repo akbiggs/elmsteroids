@@ -12,7 +12,6 @@ import Random
 import Time exposing (Time)
 import AnimationFrame
 import Color
-import Tuple2
 
 
 -- LOCAL IMPORTS
@@ -26,6 +25,7 @@ import Component.SegmentParticleRandom as SegmentParticleRandom
 import Component.Player as Player
 import Component.Star as Star
 import Component.StarRandom as StarRandom
+import Component.Stats as Stats
 import Bounds
 import Vector
 import Collisions
@@ -62,7 +62,7 @@ type GameState
 type alias Model =
     { state : GameState
     , keyboard : Keyboard.Model
-    , score : Int
+    , stats : Maybe Stats.Model
     , bullets : List Bullet.Model
     , asteroids : List Asteroid.Model
     , segmentParticles : List SegmentParticle.Model
@@ -80,6 +80,9 @@ init =
         ( player, playerEffects ) =
             Player.init Vector.zero
 
+        ( stats, statsEffects ) =
+            Stats.init { numLives = 3 }
+
         cmds =
             [ Random.generate SpawnAsteroids AsteroidRandom.asteroidGroup
             , Random.generate SpawnStars StarRandom.starGroup
@@ -88,7 +91,7 @@ init =
     in
         { state = Title
         , keyboard = keyboard
-        , score = 0
+        , stats = Just stats
         , bullets = []
         , asteroids = []
         , segmentParticles = []
@@ -97,6 +100,7 @@ init =
         }
             ! cmds
             |> processEffects processPlayerEffect playerEffects
+            |> processEffects processStatsEffect statsEffects
 
 
 
@@ -116,7 +120,7 @@ type Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg game =
+update msg model =
     case msg of
         Tick dt ->
             let
@@ -124,45 +128,32 @@ update msg game =
                     Time.inSeconds dt
 
                 ( bullets, bulletEffects ) =
-                    game.bullets
-                        |> Update.onGroup (Bullet.update (Bullet.SecondsElapsed dtSeconds))
-                        |> Tuple2.mapFst filterAlive
+                    Update.runOnGroup (Bullet.update (Bullet.SecondsElapsed dtSeconds)) model.bullets
+                        |> Update.filterAliveObjects
 
                 ( asteroids, asteroidEffects ) =
-                    game.asteroids
-                        |> Update.onGroup (Asteroid.update (Asteroid.SecondsElapsed dtSeconds))
-                        |> Tuple2.mapFst filterAlive
+                    Update.runOnGroup (Asteroid.update (Asteroid.SecondsElapsed dtSeconds)) model.asteroids
+                        |> Update.filterAliveObjects
 
                 ( player, playerEffects ) =
-                    Update.onMaybe
-                        (Update.combine
-                            [ Update.onlyIf (Keyboard.isPressed Keyboard.ArrowUp game.keyboard)
-                                (Player.update Player.Accelerate)
-                            , Update.onlyIf (Keyboard.isPressed Keyboard.ArrowDown game.keyboard)
-                                (Player.update Player.Decelerate)
-                            , Update.onlyIf (Keyboard.isPressed Keyboard.ArrowLeft game.keyboard)
-                                (Player.update Player.RotateLeft)
-                            , Update.onlyIf (Keyboard.isPressed Keyboard.ArrowRight game.keyboard)
-                                (Player.update Player.RotateRight)
-                            , Update.onlyIf (Keyboard.isPressed Keyboard.Space game.keyboard)
-                                (Player.update Player.FireBullet)
-                            , Player.update (Player.SecondsElapsed dtSeconds)
-                            ]
-                        )
-                        game.player
+                    Update.startOnMaybe model.player
+                        `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.ArrowUp model.keyboard) (Player.update Player.Accelerate)
+                        `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.ArrowDown model.keyboard) (Player.update Player.Decelerate)
+                        `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.ArrowLeft model.keyboard) (Player.update Player.RotateLeft)
+                        `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.ArrowRight model.keyboard) (Player.update Player.RotateRight)
+                        `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.Space model.keyboard) (Player.update Player.FireBullet)
+                        `Update.andThen` Player.update (Player.SecondsElapsed dtSeconds)
 
                 ( segmentParticles, segmentParticleEffects ) =
-                    game.segmentParticles
-                        |> Update.onGroup (SegmentParticle.update (SegmentParticle.SecondsElapsed dtSeconds))
-                        |> Tuple2.mapFst filterAlive
+                    Update.runOnGroup (SegmentParticle.update (SegmentParticle.SecondsElapsed dtSeconds)) model.segmentParticles
+                        |> Update.filterAliveObjects
 
                 ( stars, starEffects ) =
-                    game.stars
-                        |> Update.onGroup (Star.update (Star.SecondsElapsed dtSeconds))
-                        |> Tuple2.mapFst filterAlive
+                    Update.runOnGroup (Star.update (Star.SecondsElapsed dtSeconds)) model.stars
+                        |> Update.filterAliveObjects
 
-                ( updatedGame, gameCmd ) =
-                    { game
+                ( updatedModel, cmd ) =
+                    { model
                         | bullets = bullets
                         , asteroids = asteroids
                         , player = player
@@ -177,54 +168,49 @@ update msg game =
                         |> processEffects processStarEffect starEffects
                         |> handleCollisions
             in
-                updatedGame ! [ gameCmd ]
+                updatedModel ! [ cmd ]
 
         KeyboardMsg keyMsg ->
             let
                 ( keyboard, keyboardCmd ) =
-                    Keyboard.update keyMsg game.keyboard
+                    Keyboard.update keyMsg model.keyboard
 
                 cmds =
                     [ Cmd.map KeyboardMsg keyboardCmd
                     ]
             in
-                { game
+                { model
                     | keyboard = keyboard
                 }
                     ! cmds
 
         PlaySound filename ->
             -- TODO
-            game ! []
+            model ! []
 
         IncreaseScore amount ->
-            { game
-                | score = game.score + amount
-            }
-                ! []
+            let
+                ( updatedStats, statsEffects ) =
+                    Update.runOnMaybe (Stats.update (Stats.IncreaseScore amount)) model.stats
+            in
+                { model | stats = updatedStats }
+                    ! []
+                    |> processEffects processStatsEffect statsEffects
 
         SpawnAsteroids asteroids ->
-            { game
-                | asteroids = game.asteroids ++ asteroids
-            }
+            { model | asteroids = model.asteroids ++ asteroids }
                 ! []
 
         SpawnBullets bullets ->
-            { game
-                | bullets = game.bullets ++ bullets
-            }
+            { model | bullets = model.bullets ++ bullets }
                 ! []
 
         SpawnSegmentParticles segmentParticles ->
-            { game
-                | segmentParticles = game.segmentParticles ++ segmentParticles
-            }
+            { model | segmentParticles = model.segmentParticles ++ segmentParticles }
                 ! []
 
         SpawnStars stars ->
-            { game
-                | stars = game.stars ++ stars
-            }
+            { model | stars = model.stars ++ stars }
                 ! []
 
 
@@ -305,6 +291,11 @@ processSegmentParticleEffect =
 
 processStarEffect : Star.Effect -> Model -> ( Model, Cmd Msg )
 processStarEffect =
+    ignoreUnusedEffect
+
+
+processStatsEffect : Stats.Effect -> Model -> ( Model, Cmd Msg )
+processStatsEffect =
     ignoreUnusedEffect
 
 

@@ -1,33 +1,58 @@
-module Component.Update exposing (onMaybe, onlyIf, onGroup, combine)
+module Component.Update exposing (startOn, startOnMaybe, runOnMaybe, runIf, runOnGroup, filterAliveObjects, andThen)
+
+-- EXTERNAL IMPORTS
 
 import List exposing (map, filter, filterMap, unzip)
+import Tuple2
+
+
+-- LOCAL IMPORTS
+
 import Effects
 
 
-onMaybe : (a -> ( Maybe a, List effect )) -> Maybe a -> ( Maybe a, List effect )
-onMaybe updateFn maybeObj =
+-- FUNCTIONS
+
+
+startOn : a -> ( Maybe a, List effect )
+startOn x =
+    ( Just x, [] )
+
+
+startOnMaybe : Maybe a -> ( Maybe a, List effect )
+startOnMaybe maybeX =
+    ( maybeX, [] )
+
+
+runOnMaybe : (a -> ( Maybe a, List effect )) -> Maybe a -> ( Maybe a, List effect )
+runOnMaybe updateFn maybeObj =
     Maybe.map updateFn maybeObj
         |> Maybe.withDefault ( Nothing, [] )
 
 
-onlyIf : Bool -> (a -> ( Maybe a, List effect )) -> a -> ( Maybe a, List effect )
-onlyIf cond updateFn obj =
+runIf : Bool -> (a -> ( Maybe a, List effect )) -> a -> ( Maybe a, List effect )
+runIf cond updateFn obj =
     if cond then
         updateFn obj
     else
         ( Just obj, [] )
 
 
-onGroup : (a -> ( Maybe a, List effect )) -> List a -> ( List (Maybe a), List effect )
-onGroup updateFn xs =
+runOnGroup : (a -> ( Maybe a, List effect )) -> List a -> ( List (Maybe a), List effect )
+runOnGroup updateFn xs =
     List.map updateFn xs
         |> Effects.batch
 
 
-combine : List (a -> ( Maybe a, List effect )) -> a -> ( Maybe a, List effect )
-combine updateFns obj =
+andThen : ( Maybe a, List effect ) -> (a -> ( Maybe a, List effect )) -> ( Maybe a, List effect )
+andThen ( maybeObj, effects ) updateFn =
     let
-        maybeUpdateFns =
-            List.map onMaybe updateFns
+        ( updatedObj, newEffects ) =
+            runOnMaybe updateFn maybeObj
     in
-        List.foldl Effects.mapWithEffects (Effects.start (Just obj)) maybeUpdateFns
+        ( updatedObj, effects ++ newEffects )
+
+
+filterAliveObjects : ( List (Maybe a), List effect ) -> ( List a, List effect )
+filterAliveObjects =
+    Tuple2.mapFst (List.filterMap identity)
