@@ -369,6 +369,7 @@ view game =
                 , [ DrawUtilities.drawMaybe Player.draw game.player ]
                 , List.map Bullet.draw game.bullets
                 , List.map SegmentParticle.draw game.segmentParticles
+                , [ DrawUtilities.drawMaybe Stats.draw game.stats ]
                 ]
     in
         Collage.collage (floor Bounds.width) (floor Bounds.height) scene

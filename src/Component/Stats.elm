@@ -77,9 +77,9 @@ update msg model =
 -- <editor-fold> VIEW
 
 
-draw : Int -> Int -> Int -> Form
-draw sector score lives =
-    defaultText 12 ("sector " ++ toString sector ++ " // score: " ++ toString score ++ " // " ++ livesText lives)
+draw : Model -> Form
+draw model =
+    defaultText 12 ("sector " ++ toString model.sector ++ " // score: " ++ toString model.score ++ " // " ++ livesText model.numLives)
         |> moveY (top - 10)
 
 
