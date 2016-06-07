@@ -14,16 +14,6 @@ import Effects
 -- FUNCTIONS
 
 
-startOn : a -> ( Maybe a, List effect )
-startOn x =
-    ( Just x, [] )
-
-
-startOnMaybe : Maybe a -> ( Maybe a, List effect )
-startOnMaybe maybeX =
-    ( maybeX, [] )
-
-
 runOnMaybe : (a -> ( Maybe a, List effect )) -> Maybe a -> ( Maybe a, List effect )
 runOnMaybe updateFn maybeObj =
     Maybe.map updateFn maybeObj

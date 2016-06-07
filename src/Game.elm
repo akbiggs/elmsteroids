@@ -127,38 +127,37 @@ update msg model =
                 dtSeconds =
                     Time.inSeconds dt
 
-                ( bullets, bulletEffects ) =
+                ( updatedBullets, bulletEffects ) =
                     Update.runOnGroup (Bullet.update (Bullet.SecondsElapsed dtSeconds)) model.bullets
                         |> Update.filterAliveObjects
 
-                ( asteroids, asteroidEffects ) =
+                ( updatedAsteroids, asteroidEffects ) =
                     Update.runOnGroup (Asteroid.update (Asteroid.SecondsElapsed dtSeconds)) model.asteroids
                         |> Update.filterAliveObjects
 
-                ( player, playerEffects ) =
-                    Update.startOnMaybe model.player
+                ( updatedSegmentParticles, segmentParticleEffects ) =
+                    Update.runOnGroup (SegmentParticle.update (SegmentParticle.SecondsElapsed dtSeconds)) model.segmentParticles
+                        |> Update.filterAliveObjects
+
+                ( updatedStars, starEffects ) =
+                    Update.runOnGroup (Star.update (Star.SecondsElapsed dtSeconds)) model.stars
+                        |> Update.filterAliveObjects
+
+                ( updatedPlayer, playerEffects ) =
+                    Update.runOnMaybe (Player.update (Player.SecondsElapsed dtSeconds)) model.player
                         `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.ArrowUp model.keyboard) (Player.update Player.Accelerate)
                         `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.ArrowDown model.keyboard) (Player.update Player.Decelerate)
                         `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.ArrowLeft model.keyboard) (Player.update Player.RotateLeft)
                         `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.ArrowRight model.keyboard) (Player.update Player.RotateRight)
                         `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.Space model.keyboard) (Player.update Player.FireBullet)
-                        `Update.andThen` Player.update (Player.SecondsElapsed dtSeconds)
-
-                ( segmentParticles, segmentParticleEffects ) =
-                    Update.runOnGroup (SegmentParticle.update (SegmentParticle.SecondsElapsed dtSeconds)) model.segmentParticles
-                        |> Update.filterAliveObjects
-
-                ( stars, starEffects ) =
-                    Update.runOnGroup (Star.update (Star.SecondsElapsed dtSeconds)) model.stars
-                        |> Update.filterAliveObjects
 
                 ( updatedModel, cmd ) =
                     { model
-                        | bullets = bullets
-                        , asteroids = asteroids
-                        , player = player
-                        , segmentParticles = segmentParticles
-                        , stars = stars
+                        | bullets = updatedBullets
+                        , asteroids = updatedAsteroids
+                        , player = updatedPlayer
+                        , segmentParticles = updatedSegmentParticles
+                        , stars = updatedStars
                     }
                         ! []
                         |> processEffects processPlayerEffect playerEffects
