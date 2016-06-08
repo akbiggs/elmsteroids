@@ -1,4 +1,4 @@
-module DrawUtilities exposing (drawMaybe)
+module DrawUtilities exposing (drawMaybe, emptyForm)
 
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS

@@ -17,15 +17,9 @@ import Color
 -- LOCAL IMPORTS
 
 import Component.Update as Update
-import Component.Bullet as Bullet
-import Component.Asteroid as Asteroid
-import Component.AsteroidRandom as AsteroidRandom
-import Component.SegmentParticle as SegmentParticle
-import Component.SegmentParticleRandom as SegmentParticleRandom
-import Component.Player as Player
-import Component.Star as Star
-import Component.StarRandom as StarRandom
+
 import Component.Stats as Stats
+import State.GameState as GameState
 import Bounds
 import Vector
 import Collisions
@@ -51,23 +45,9 @@ main =
 -- <editor-fold> MODEL
 
 
-type GameState
-    = Title
-    | PreGame
-    | Game
-    | PostGame
-    | GameOver
-
-
 type alias Model =
-    { state : GameState
+    { state : GameState.Model
     , keyboard : Keyboard.Model
-    , stats : Maybe Stats.Model
-    , bullets : List Bullet.Model
-    , asteroids : List Asteroid.Model
-    , segmentParticles : List SegmentParticle.Model
-    , stars : List Star.Model
-    , player : Maybe Player.Model
     }
 
 
@@ -83,25 +63,6 @@ init =
         ( stats, statsEffects ) =
             Stats.init { numLives = 3 }
 
-        cmds =
-            [ Random.generate SpawnAsteroids AsteroidRandom.asteroidGroup
-            , Random.generate SpawnStars StarRandom.starGroup
-            , Cmd.map KeyboardMsg keyboardCmd
-            ]
-    in
-        { state = Title
-        , keyboard = keyboard
-        , stats = Just stats
-        , bullets = []
-        , asteroids = []
-        , segmentParticles = []
-        , stars = []
-        , player = Just player
-        }
-            ! cmds
-            |> processEffects processPlayerEffect playerEffects
-            |> processEffects processStatsEffect statsEffects
-
 
 
 -- </editor-fold>
@@ -113,11 +74,7 @@ type Msg
     | KeyboardMsg Keyboard.Msg
     | PlaySound String
     | IncreaseScore Int
-    | SpawnAsteroids (List Asteroid.Model)
     | SpawnBullets (List Bullet.Model)
-    | SpawnSegmentParticles (List SegmentParticle.Model)
-    | SpawnStars (List Star.Model)
-
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -127,45 +84,6 @@ update msg model =
                 dtSeconds =
                     Time.inSeconds dt
 
-                ( updatedBullets, bulletEffects ) =
-                    Update.runOnGroup (Bullet.update (Bullet.SecondsElapsed dtSeconds)) model.bullets
-                        |> Update.filterAliveObjects
-
-                ( updatedAsteroids, asteroidEffects ) =
-                    Update.runOnGroup (Asteroid.update (Asteroid.SecondsElapsed dtSeconds)) model.asteroids
-                        |> Update.filterAliveObjects
-
-                ( updatedSegmentParticles, segmentParticleEffects ) =
-                    Update.runOnGroup (SegmentParticle.update (SegmentParticle.SecondsElapsed dtSeconds)) model.segmentParticles
-                        |> Update.filterAliveObjects
-
-                ( updatedStars, starEffects ) =
-                    Update.runOnGroup (Star.update (Star.SecondsElapsed dtSeconds)) model.stars
-                        |> Update.filterAliveObjects
-
-                ( updatedPlayer, playerEffects ) =
-                    Update.runOnMaybe (Player.update (Player.SecondsElapsed dtSeconds)) model.player
-                        `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.ArrowUp model.keyboard) (Player.update Player.Accelerate)
-                        `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.ArrowDown model.keyboard) (Player.update Player.Decelerate)
-                        `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.ArrowLeft model.keyboard) (Player.update Player.RotateLeft)
-                        `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.ArrowRight model.keyboard) (Player.update Player.RotateRight)
-                        `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.Space model.keyboard) (Player.update Player.FireBullet)
-
-                ( updatedModel, cmd ) =
-                    { model
-                        | bullets = updatedBullets
-                        , asteroids = updatedAsteroids
-                        , player = updatedPlayer
-                        , segmentParticles = updatedSegmentParticles
-                        , stars = updatedStars
-                    }
-                        ! []
-                        |> processEffects processPlayerEffect playerEffects
-                        |> processEffects processAsteroidEffect asteroidEffects
-                        |> processEffects processBulletEffect bulletEffects
-                        |> processEffects processSegmentParticleEffect segmentParticleEffects
-                        |> processEffects processStarEffect starEffects
-                        |> handleCollisions
             in
                 updatedModel ! [ cmd ]
 

@@ -4,6 +4,7 @@ module Component.Player exposing (Model, Msg(..), Effect(..), init, update, draw
 -- EXTERNAL IMPORTS
 
 import Collage exposing (Form)
+import Random exposing (Generator)
 
 
 -- LOCAL IMPORTS
@@ -11,6 +12,8 @@ import Collage exposing (Form)
 import Vector exposing (Vector)
 import Component.Ship as Ship
 import Component.Bullet as Bullet
+import Component.SegmentParticle as SegmentParticle
+import Component.SegmentParticleRandom as SegmentParticleRandom
 import Segment exposing (Segment)
 import Triangle exposing (Triangle)
 
@@ -87,10 +90,7 @@ type Msg
 type Effect
     = PlaySound String
     | SpawnBullet Bullet.Model
-    | SpawnSegmentParticles
-        { velocity : Vector
-        , segments : List Segment
-        }
+    | GenerateSegmentParticles (Generator (List SegmentParticle.Model))
 
 
 update : Msg -> Model -> ( Maybe Model, List Effect )
@@ -185,10 +185,8 @@ update msg model =
         Die ->
             let
                 segmentParticleEffect =
-                    SpawnSegmentParticles
-                        { velocity = model.velocity
-                        , segments = wrappedSegments model
-                        }
+                    SegmentParticleRandom.particles (model.velocity) (wrappedSegments model)
+                        |> GenerateSegmentParticles
 
                 effects =
                     [ segmentParticleEffect ]

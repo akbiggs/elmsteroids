@@ -1,4 +1,13 @@
-module State.TitleState exposing (Model, Msg, Effect, init, update, view)
+module State.Title exposing (Model, Msg, Effect, init, update, draw)
+
+-- EXTERNAL IMPORTS
+
+import Collage exposing (Form)
+
+
+-- LOCAL IMPORTS
+
+import DrawUtilities
 
 
 type alias Model =
@@ -35,5 +44,13 @@ type Effect
 update : Msg -> Model -> ( Model, List Effect )
 update msg model =
     case msg of
+        SecondsElapsed dt ->
+            ( model, [] )
+
         Dismiss ->
             ( model, [ StartGame ] )
+
+
+draw : Model -> Form
+draw model =
+    DrawUtilities.emptyForm
