@@ -30,6 +30,10 @@ type State
     | Playing State.Playing.Model
     | GameOver State.GameOver.Model
 
+type StateEffect
+    = TitleEffect State.Title.Effect
+    | PlayingEffect State.Playng.Effect
+    | GameOverEffect State.GameOver.Effect
 
 type alias Model =
     { state : State
@@ -83,72 +87,83 @@ update msg model =
     let
         ( updatedState, stateEffects ) =
             updateState msg model.state
+
+        ( updatedModel, effects ) =
+            case msg of
+                SecondsElapsed dt ->
+                    let
+                        ( updatedAsteroids, asteroidEffects ) =
+                            List.map (Asteroid.update (Asteroid.SecondsElapsed dtSeconds)) model.asteroids
+                                |> Update.filterAlive
+                                |> Effects.batch
+
+                        ( updatedSegmentParticles, segmentParticleEffects ) =
+                            List.map (SegmentParticle.update (SegmentParticle.SecondsElapsed dtSeconds)) model.segmentParticles
+                                |> Update.filterAlive
+                                |> Effects.batch
+
+                        ( updatedStars, starEffects ) =
+                            List.map (Star.update (Star.SecondsElapsed dtSeconds)) model.stars
+                                |> Update.filterAlive
+                                |> Effects.batch
+                    in
+                        Effects.return
+                            { model
+                                | asteroids = updatedAsteroids
+                                , segmentParticles = updatedSegmentParticles
+                                , stars = updatedStars
+                            }
+                            `Effects.andThen` Effects.handle handleAsteroidEffect asteroidEffects
+                            `Effects.andThen` Effects.handle handleSegmentParticleEffect segmentParticleEffects
+                            `Effects.andThen` Effects.handle handleStarEffect starEffects
+                            `Effects.andThen` resolveCollisions
+
+                HandleInput keyboard ->
+                    -- nothing needs the input besides the current state of the game
+                    Effects.return model
+
+                SpawnAsteroids asteroids ->
+                    Effects.return { model | asteroids = model.asteroids ++ asteroids }
+
+                SpawnSegmentParticles segmentParticles ->
+                    Effects.return { model | segmentParticles = model.segmentParticles ++ segmentParticles }
+
+                SpawnStars stars ->
+                    Effects.return { model | stars = model.stars ++ stars }
     in
-        case msg of
-            SecondsElapsed dt ->
-                let
-                    ( updatedAsteroids, asteroidEffects ) =
-                        Update.runOnGroup (Asteroid.update (Asteroid.SecondsElapsed dtSeconds)) model.asteroids
-                            |> Update.filterAliveObjects
-
-                    ( updatedSegmentParticles, segmentParticleEffects ) =
-                        Update.runOnGroup (SegmentParticle.update (SegmentParticle.SecondsElapsed dtSeconds)) model.segmentParticles
-                            |> Update.filterAliveObjects
-
-                    ( updatedStars, starEffects ) =
-                        Update.runOnGroup (Star.update (Star.SecondsElapsed dtSeconds)) model.stars
-                            |> Update.filterAliveObjects
-                in
-                    Effects.chain
-                        { model
-                            | asteroids = updatedAsteroids
-                            , segmentParticles = updatedSegmentParticles
-                            , stars = updatedStars
-                        }
-                        `Effects.andThen` Effects.process processAsteroidEffect asteroidEffects
-                        `Effects.andThen` Effects.process processSegmentParticleEffect segmentParticleEffects
-                        `Effects.andThen` Effects.process processStarEffect starEffects
-                        `Effects.andThen` resolveCollisions
-
-            HandleInput keyboard ->
-                -- nothing needs the input besides the current state of the game
-                ( model, [] )
-
-            SpawnAsteroids asteroids ->
-                ( { model | asteroids = model.asteroids ++ asteroids }, [] )
-
-            SpawnSegmentParticles segmentParticles ->
-                ( { model | segmentParticles = model.segmentParticles ++ segmentParticles }, [] )
-
-            SpawnStars stars ->
-                ( { model | stars = model.stars ++ stars }, [] )
+        Effects.init { model | state = updatedState } effects
+            `Effects.andThen` Effects.handle handleStateEffect stateEffects
 
 
-processAsteroidEffect : Asteroid.Effect -> Model -> ( Model, Cmd Msg )
-processAsteroidEffect effect model =
+handleAsteroidEffect : Effects.Handler Asteroid.Effect Model Effect
+handleAsteroidEffect effect model =
     case effect of
         Asteroid.SpawnSegmentParticles { velocity, segments } ->
-            ( model, [ GenerateSegmentParticles <| SegmentParticleRandom.particles velocity segments ] )
+            Effects.return model
+                |> Effects.add [ GenerateSegmentParticles <| SegmentParticleRandom.particles velocity segments ]
 
         Asteroid.SpawnSplitAsteroids { parentScale, position } ->
             let
                 childScale =
                     parentScale - 1
             in
-                ( model, [ GenerateAsteroids <| AsteroidRandom.asteroidGroupWithScaleAt childScale position ] )
+                Effects.return model
+                    |> Effects.add [ GenerateAsteroids <| AsteroidRandom.asteroidGroupWithScaleAt childScale position ]
 
         Asteroid.IncreaseScore amount ->
             update (IncreaseScore amount) model
 
 
-processSegmentParticleEffect : SegmentParticle.Effect -> Model -> ( Model, Cmd Msg )
-processSegmentParticleEffect =
-    ignoreUnusedEffect
+handleSegmentParticleEffect : SegmentParticle.Effect -> Model -> ( Model, Cmd Msg )
+handleSegmentParticleEffect =
+    Effects.ignoreUnused
 
 
-processStarEffect : Star.Effect -> Model -> ( Model, Cmd Msg )
-processStarEffect =
-    ignoreUnusedEffect
+handleStarEffect : Star.Effect -> Model -> ( Model, Cmd Msg )
+handleStarEffect =
+    Effects.ignoreUnused
+
+handleStateEffect :
 
 
 

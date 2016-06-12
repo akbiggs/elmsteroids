@@ -10,6 +10,7 @@ import Collage exposing (Form, group, rect, filled, move, alpha)
 -- LOCAL IMPORTS
 
 import Vector exposing (Vector)
+import Update
 
 
 -- </editor-fold> END IMPORTS
@@ -33,23 +34,17 @@ type Msg
 
 
 type alias Effect =
-    ()
+    Effects.None
 
 
-update : Msg -> Model -> ( Maybe Model, List Effect )
+update : Msg -> Model -> Update.Result Model Effect
 update msg model =
     case msg of
         SecondsElapsed dt ->
-            let
-                blinkPhase =
-                    model.blinkPhase + model.blinkFrequency * dt
-
-                updatedModel =
-                    { model
-                        | blinkPhase = blinkPhase
-                    }
-            in
-                ( Just updatedModel, [] )
+            Update.return
+                { model
+                    | blinkPhase = model.blinkPhase + model.blinkFrequency * dt
+                }
 
 
 

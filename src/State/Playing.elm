@@ -11,7 +11,7 @@ import Random exposing (Generator)
 import Component.Stats as Stats
 import Component.Player as Player
 import Component.Bullet as Bullet
-import Component.Update as Update
+import Update
 import Component.SegmentParticle as SegmentParticle
 import State.Playing.PlayerAlive as PlayerAlive
 import State.Playing.PlayerDead as PlayerDead

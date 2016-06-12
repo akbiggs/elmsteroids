@@ -12,6 +12,7 @@ import Color exposing (..)
 
 import Vector exposing (..)
 import Segment exposing (Segment, center)
+import Update
 
 
 -- </editor-fold> END IMPORTS
@@ -38,17 +39,17 @@ type Msg
 
 
 type alias Effect =
-    ()
+    Effects.None
 
 
-update : Msg -> Model -> ( Maybe Model, List Effect )
+update : Msg -> Model -> Update.Result Model Effect
 update msg model =
     case msg of
         SecondsElapsed dt ->
             moveParticle dt model
                 |> rotateParticle dt
                 |> killParticle dt
-                |> \x -> ( x, [] )
+                |> Update.returnMaybe
 
 
 moveParticle : Float -> Model -> Model

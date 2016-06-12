@@ -9,7 +9,9 @@ import Collage exposing (Form, moveY)
 -- LOCAL IMPORTS
 
 import DefaultText exposing (..)
-import Bounds exposing (..)
+import Bounds
+import Effects exposing (Effects)
+import Update
 
 
 -- </editor-fold> END IMPORTS
@@ -28,16 +30,13 @@ type alias InitArgs =
     }
 
 
-init : InitArgs -> ( Model, List Effect )
+init : InitArgs -> Effects Model Effect
 init { numLives } =
-    let
-        initializedModel =
-            { sector = 1
-            , score = 0
-            , numLives = numLives
-            }
-    in
-        ( initializedModel, [] )
+    Effects.return
+        { sector = 1
+        , score = 0
+        , numLives = numLives
+        }
 
 
 
@@ -56,20 +55,20 @@ type alias Effect =
     ()
 
 
-update : Msg -> Model -> ( Maybe Model, List Effect )
+update : Msg -> Model -> Update.Result Model Effect
 update msg model =
     case msg of
         NextSector ->
-            ( Just { model | sector = model.sector + 1 }, [] )
+            Update.return { model | sector = model.sector + 1 }
 
         IncreaseScore amount ->
-            ( Just { model | score = model.score + amount }, [] )
+            Update.return { model | score = model.score + amount }
 
         DecrementNumLives ->
-            ( Just { model | numLives = model.numLives - 1 }, [] )
+            Update.return { model | numLives = model.numLives - 1 }
 
         Hide ->
-            ( Nothing, [] )
+            Update.returnNothing
 
 
 
@@ -79,7 +78,14 @@ update msg model =
 
 draw : Model -> Form
 draw model =
-    defaultText 12 ("sector " ++ toString model.sector ++ " // score: " ++ toString model.score ++ " // " ++ livesText model.numLives)
+    defaultText 12
+        ("sector "
+            ++ toString model.sector
+            ++ " // score: "
+            ++ toString model.score
+            ++ " // "
+            ++ livesText model.numLives
+        )
         |> moveY (top - 10)
 
 

@@ -15,6 +15,7 @@ import Vector exposing (..)
 import Segment exposing (Segment)
 import Triangle exposing (Triangle)
 import Wrap
+import Update
 
 
 -- </editor-fold> END IMPORTS
@@ -131,45 +132,30 @@ type Effect
     | IncreaseScore Int
 
 
-update : Msg -> Model -> ( Maybe Model, List Effect )
+update : Msg -> Model -> Update.Result Model Effect
 update msg model =
     case msg of
         SecondsElapsed dt ->
-            let
-                updatedAsteroid =
-                    moveAsteroid dt model
-                        |> rotateAsteroid dt
-            in
-                ( Just updatedAsteroid, [] )
+            model
+                |> moveAsteroid dt
+                |> rotateAsteroid dt
+                |> Update.return
 
         BlowUp ->
-            let
-                spawnParticlesEffect =
-                    SpawnSegmentParticles
+            Update.returnNothing
+                |> Effects.add
+                    [ SpawnSegmentParticles
                         { velocity = model.velocity
                         , segments = wrappedSegments model
                         }
-
-                spawnAsteroidsEffect =
-                    SpawnSplitAsteroids
+                    , IncreaseScore 100
+                    ]
+                |> Effects.addIf (model.scale > 1)
+                    [ SpawnSplitAsteroids
                         { position = model.position
                         , parentScale = model.scale
                         }
-
-                shouldSplit =
-                    model.scale > 1
-
-                effects =
-                    [ spawnParticlesEffect
-                    , IncreaseScore 100
                     ]
-                        ++ (if shouldSplit then
-                                [ spawnAsteroidsEffect ]
-                            else
-                                []
-                           )
-            in
-                ( Nothing, effects )
 
 
 moveAsteroid : Float -> Model -> Model

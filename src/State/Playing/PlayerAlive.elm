@@ -11,9 +11,9 @@ import Keyboard.Extra as Keyboard
 import Component.Bullet as Bullet
 import Component.SegmentParticle as SegmentParticle
 import Component.Player as Player
-import Component.Update as Update
 import Vector exposing (Vector)
-import Effects
+import Update
+import Effects exposing (Effects)
 
 
 type alias Model =

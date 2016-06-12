@@ -1,55 +1,91 @@
-module Effects exposing (init, map, process, ignoreUnused, andThen, batch)
+module Effects exposing (Effects, init, return, getValue, getEffects, add, addIf, handle, ignoreUnused, andThen, batch, toCmd)
 
 
 type alias None =
     ()
 
 
-init : value -> List effect -> ( value, List effect )
+type alias Effects a effect =
+    ( a, List effect )
+
+
+type alias Handler effectA a effectB =
+    effectA -> a -> Effects a effectB
+
+
+init : a -> List effect -> Effects a effect
 init x effects =
     ( x, effects )
 
 
-chain : value -> ( value, List effect )
-chain x =
-    ( x, [] )
+return : a -> Effects a effect
+return x =
+    init x []
 
 
-add : ( value, List effect ) -> List effect -> ( value, List effect )
-add ( x, effects ) newEffects =
-    ( x, effects ++ newEffects )
+getValue : Effects a effect -> a
+getValue ( x, effects ) =
+    x
 
 
-map : (a -> b) -> ( value, List a ) -> ( value, List b )
-map fn ( x, effects ) =
+getEffects : Effects a effect -> List effect
+getEffects ( x, effects ) =
+    effects
+
+
+add : List effect -> Effects a effect -> Effects a effect
+add newEffects ( x, effects ) =
+    init x (effects ++ newEffects)
+
+
+addIf : Bool -> List effect -> Effects a effect -> Effects a effect
+addIf cond newEffects result =
+    if cond then
+        add newEffects result
+    else
+        result
+
+
+mapOverValue : (a -> b) -> Effects a effect -> Effects b effect
+mapOverValue fn ( x, effects ) =
+    ( fn x, effects )
+
+
+mapOverEffects : (effectA -> effectB) -> Effects a effectA -> Effects a effectB
+mapOverEffects fn ( x, effects ) =
     ( x, List.map fn effects )
 
 
-process : (effectA -> value -> ( value, List effectB )) -> List effectA -> value -> ( value, List effectB )
-process effectHandlerFn effects x =
+handle : Handler effectA a effectB -> List effectA -> a -> Effects a effectB
+handle effectHandlerFn effects x =
     List.foldl (\effect result -> result `andThen` effectHandlerFn effect)
-        (init x)
+        (return x)
         effects
 
 
-ignoreUnused : None -> value -> ( value, List effect )
+ignoreUnused : None -> a -> Effects a effect
 ignoreUnused _ x =
-    ( x, [] )
+    return x
 
 
-andThen : ( a, List effect ) -> (a -> ( b, List effect )) -> ( b, List effect )
+andThen : Effects a effect -> (a -> Effects b effect) -> Effects b effect
 andThen ( x, effects ) fn =
     let
         ( y, newEffects ) =
             fn x
     in
-        ( y, effects ++ newEffects )
+        init y (effects ++ newEffects)
 
 
-batch : List ( a, List effect ) -> ( List a, List effect )
+batch : List (Effects a effect) -> Effects (List a) effect
 batch results =
     let
         ( xs, effectsLists ) =
             List.unzip results
     in
         ( xs, List.concat effectsLists )
+
+
+toCmd : Effects a (Cmd msg) -> ( a, Cmd msg )
+toCmd ( x, cmds ) =
+    x ! cmds

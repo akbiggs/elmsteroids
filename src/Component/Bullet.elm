@@ -12,6 +12,11 @@ import Time exposing (Time)
 
 
 -- LOCAL IMPORTS
+
+import Effects exposing (Effects)
+import Update
+
+
 -- </editor-fold>
 -- <editor-fold> MODEL
 
@@ -42,21 +47,20 @@ type Msg
 
 
 type alias Effect =
-    ()
+    Effects.None
 
 
-update : Msg -> Model -> ( Maybe Model, List Effect )
+update : Msg -> Model -> Update.Result Model Effect
 update msg bullet =
     case msg of
         SecondsElapsed dt ->
-            let
-                updatedBullet =
-                    (moveBullet dt >> killBullet dt) bullet
-            in
-                ( updatedBullet, [] )
+            bullet
+                |> moveBullet dt
+                |> killBullet dt
+                |> Update.returnMaybe
 
         Explode ->
-            ( Nothing, [] )
+            Update.returnNothing
 
 
 moveBullet : Time -> Model -> Model
