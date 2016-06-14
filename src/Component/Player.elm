@@ -45,7 +45,7 @@ init { position } =
         , velocityDelta = 0
         , rotation = 0
         , rotationDelta = 0
-        , timeSinceLastShot = 0
+        , timeSinceLastShot = reloadTime
         }
 
 
@@ -135,7 +135,7 @@ update msg model =
             Update.returnAlive { model | rotationDelta = rotationSpeed }
 
         FireBullet ->
-            if model.timeSinceLastShot >= reloadTime then
+            if model.timeSinceLastShot < reloadTime then
                 Update.returnAlive model
             else
                 Update.returnAlive { model | timeSinceLastShot = 0 }
