@@ -1,4 +1,4 @@
-module Component.SegmentParticle exposing (Model, Msg(..), Effect, update, draw)
+module Component.SegmentParticle exposing (Model, Msg(..), Effect, init, update, draw)
 
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS
@@ -6,6 +6,9 @@ module Component.SegmentParticle exposing (Model, Msg(..), Effect, update, draw)
 import List exposing (map, filterMap)
 import Collage exposing (Form, group, path, traced, defaultLine, move, alpha)
 import Color exposing (..)
+import Effects exposing (Effects)
+import Game.Update as Update exposing (Update)
+import Time exposing (Time)
 
 
 -- LOCAL IMPORTS
@@ -24,8 +27,29 @@ type alias Model =
     , rotation : Float
     , rotationVelocity : Float
     , segment : Segment
-    , timeUntilDeath : Float
+    , timeUntilDeath : Time
     }
+
+
+type alias InitArgs =
+    { position : Vector
+    , velocity : Vector
+    , rotationVelocity : Float
+    , segment : Segment
+    , timeUntilDeath : Time
+    }
+
+
+init : InitArgs -> Effects Model Effect
+init { position, velocity, rotationVelocity, segment, timeUntilDeath } =
+    Effects.return
+        { position = position
+        , velocity = velocity
+        , rotation = 0
+        , rotationVelocity = rotationVelocity
+        , segment = segment
+        , timeUntilDeath = timeUntilDeath
+        }
 
 
 
@@ -38,17 +62,18 @@ type Msg
 
 
 type alias Effect =
-    ()
+    Effects.None
 
 
-update : Msg -> Model -> ( Maybe Model, List Effect )
+update : Msg -> Update Model Effect
 update msg model =
     case msg of
         SecondsElapsed dt ->
-            moveParticle dt model
+            model
+                |> moveParticle dt
                 |> rotateParticle dt
                 |> killParticle dt
-                |> \x -> ( x, [] )
+                |> Update.returnMaybe
 
 
 moveParticle : Float -> Model -> Model
@@ -69,10 +94,10 @@ rotateParticle dt particle =
 
 
 killParticle : Float -> Model -> Maybe Model
-killParticle timeDelta particle =
+killParticle dt particle =
     let
         timeUntilDeath =
-            particle.timeUntilDeath - timeDelta
+            particle.timeUntilDeath - (Time.inSeconds dt)
     in
         if timeUntilDeath > 0 then
             Just { particle | timeUntilDeath = timeUntilDeath }
@@ -92,7 +117,7 @@ draw particle =
         |> map (drawSegment particle.rotation)
         |> group
         |> move particle.position
-        |> alpha (min particle.timeUntilDeath 1)
+        |> alpha (min (Time.inSeconds particle.timeUntilDeath) 1)
 
 
 drawSegment : Float -> Segment -> Form

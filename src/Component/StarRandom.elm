@@ -4,6 +4,7 @@ module Component.StarRandom exposing (starGroup)
 -- EXTERNAL IMPORTS
 
 import Random exposing (Generator, andThen)
+import Effects exposing (Effects)
 
 
 -- LOCAL IMPORTS
@@ -17,21 +18,22 @@ import Vector exposing (Vector)
 -- <editor-fold> GENERATORS
 
 
-starGroup : Generator (List Star.Model)
+starGroup : Generator (Effects (List Star.Model) Star.Effect)
 starGroup =
     Random.int 80 100
         `andThen` \n ->
-                    Random.list n star
+                    Random.map Effects.batch (Random.list n star)
 
 
-star : Generator Star.Model
+star : Generator (Effects Star.Model Star.Effect)
 star =
     Random.map3
         (\posValue phaseValue freqValue ->
-            { position = posValue
-            , blinkPhase = phaseValue
-            , blinkFrequency = freqValue
-            }
+            Star.init
+                { position = posValue
+                , blinkPhase = phaseValue
+                , blinkFrequency = freqValue
+                }
         )
         position
         phase

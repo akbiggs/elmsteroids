@@ -6,6 +6,8 @@ module Component.SegmentParticleRandom exposing (particles)
 import List
 import Random exposing (Generator)
 import Random.Extra as RandomExtra
+import Time exposing (Time)
+import Effects exposing (Effects)
 
 
 -- LOCAL IMPORTS
@@ -19,13 +21,14 @@ import Segment exposing (Segment)
 -- <editor-fold> GENERATORS
 
 
-particles : Vector -> List Segment -> Generator (List SegmentParticle.Model)
+particles : Vector -> List Segment -> Generator (Effects (List SegmentParticle.Model) SegmentParticle.Effect)
 particles initialVelocity segments =
     List.map (particle initialVelocity) segments
         |> RandomExtra.together
+        |> Random.map Effects.batch
 
 
-particle : Vector -> Segment -> Generator (SegmentParticle.Model)
+particle : Vector -> Segment -> Generator (Effects SegmentParticle.Model SegmentParticle.Effect)
 particle initialVelocity segment =
     let
         position =
@@ -37,15 +40,15 @@ particle initialVelocity segment =
     in
         Random.map4
             (\velDir velMagnitude rotationVel lifetime ->
-                { position = position
-                , velocity =
-                    Vector.rotate velDir ( 0, velMagnitude )
-                        |> Vector.add initialVelocity
-                , rotation = 0
-                , rotationVelocity = rotationVel
-                , segment = relativeSegment
-                , timeUntilDeath = lifetime
-                }
+                SegmentParticle.init
+                    { position = position
+                    , velocity =
+                        Vector.rotate velDir ( 0, velMagnitude )
+                            |> Vector.add initialVelocity
+                    , rotationVelocity = rotationVel
+                    , segment = relativeSegment
+                    , timeUntilDeath = lifetime
+                    }
             )
             velocityDirection
             velocityMagnitude
@@ -68,9 +71,9 @@ rotationVelocity =
     Random.float -1 1
 
 
-timeUntilDeath : Generator Float
+timeUntilDeath : Generator Time
 timeUntilDeath =
-    Random.float 1 3
+    Random.map ((*) Time.second) (Random.float 1 3)
 
 
 angle : Generator Float

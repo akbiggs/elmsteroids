@@ -4,6 +4,8 @@ module Component.Player exposing (Model, Msg(..), Effect(..), init, update, draw
 -- EXTERNAL IMPORTS
 
 import Collage exposing (Form)
+import Time exposing (Time)
+import Game.Update as Update exposing (Update)
 
 
 -- LOCAL IMPORTS
@@ -13,6 +15,7 @@ import Component.Ship as Ship
 import Component.Bullet as Bullet
 import Segment exposing (Segment)
 import Triangle exposing (Triangle)
+import Effects exposing (Effects)
 
 
 -- </editor-fold> END IMPORTS
@@ -25,23 +28,25 @@ type alias Model =
     , velocityDelta : Float
     , rotation : Float
     , rotationDelta : Float
-    , reloadTime : Float
+    , timeSinceLastShot : Time
     }
 
 
-init : Vector -> ( Model, List Effect )
-init pos =
-    let
-        initialModel =
-            { position = pos
-            , velocity = Vector.zero
-            , velocityDelta = 0
-            , rotation = 0
-            , rotationDelta = 0
-            , reloadTime = 0
-            }
-    in
-        ( initialModel, [] )
+type alias InitArgs =
+    { position : Vector
+    }
+
+
+init : InitArgs -> Effects Model Effect
+init { position } =
+    Effects.return
+        { position = position
+        , velocity = Vector.zero
+        , velocityDelta = 0
+        , rotation = 0
+        , rotationDelta = 0
+        , timeSinceLastShot = 0
+        }
 
 
 accel : Float
@@ -52,6 +57,11 @@ accel =
 rotationSpeed : Float
 rotationSpeed =
     1.5
+
+
+reloadTime : Time
+reloadTime =
+    Time.second * 0.3
 
 
 front : Model -> Vector
@@ -86,114 +96,70 @@ type Msg
 
 type Effect
     = PlaySound String
-    | SpawnBullet Bullet.Model
+    | SpawnBullet (Effects Bullet.Model Bullet.Effect)
     | SpawnSegmentParticles
         { velocity : Vector
         , segments : List Segment
         }
 
 
-update : Msg -> Model -> ( Maybe Model, List Effect )
+update : Msg -> Update Model Effect
 update msg model =
     case msg of
         SecondsElapsed dt ->
-            let
-                position =
-                    Vector.add model.position (Vector.mulS dt model.velocity)
-                        |> Vector.wrap
-
-                velocity =
-                    ( 0, model.velocityDelta * dt )
-                        |> Vector.rotate model.rotation
-                        |> Vector.add model.velocity
-
-                rotation =
-                    model.rotation + model.rotationDelta * dt
-
-                reloadTime =
-                    max (model.reloadTime - dt) 0
-
-                updatedModel =
-                    { model
-                        | position = position
-                        , velocity = velocity
-                        , velocityDelta = 0
-                        , rotation = rotation
-                        , rotationDelta = 0
-                        , reloadTime = reloadTime
-                    }
-            in
-                ( Just updatedModel, [] )
+            Update.returnAlive
+                { model
+                    | position =
+                        Vector.add model.position (Vector.mulS dt model.velocity)
+                            |> Vector.wrap
+                    , velocity =
+                        ( 0, model.velocityDelta * dt )
+                            |> Vector.rotate model.rotation
+                            |> Vector.add model.velocity
+                    , velocityDelta = 0
+                    , rotation = model.rotation + model.rotationDelta * dt
+                    , rotationDelta = 0
+                    , timeSinceLastShot = model.timeSinceLastShot + (dt * Time.second)
+                }
 
         Accelerate ->
-            let
-                updatedModel =
-                    { model
-                        | velocityDelta = model.velocityDelta + accel
-                    }
-            in
-                ( Just updatedModel, [] )
+            Update.returnAlive { model | velocityDelta = model.velocityDelta + accel }
 
         Decelerate ->
-            let
-                updatedModel =
-                    { model
-                        | velocityDelta = model.velocityDelta - accel
-                    }
-            in
-                ( Just updatedModel, [] )
+            Update.returnAlive { model | velocityDelta = model.velocityDelta - accel }
 
         RotateLeft ->
-            let
-                updatedModel =
-                    { model
-                        | rotationDelta = -rotationSpeed
-                    }
-            in
-                ( Just updatedModel, [] )
+            Update.returnAlive { model | rotationDelta = -rotationSpeed }
 
         RotateRight ->
-            let
-                updatedModel =
-                    { model
-                        | rotationDelta = rotationSpeed
-                    }
-            in
-                ( Just updatedModel, [] )
+            Update.returnAlive { model | rotationDelta = rotationSpeed }
 
         FireBullet ->
-            if model.reloadTime > 0 then
-                ( Just model, [] )
+            if model.timeSinceLastShot >= reloadTime then
+                Update.returnAlive model
             else
-                let
-                    bullet =
-                        Bullet.init (front model)
-                            (model.velocity |> Vector.add (Vector.rotate model.rotation ( 0, 80 )))
-                            3.0
-
-                    updatedModel =
-                        { model
-                            | reloadTime = 0.3
-                        }
-
-                    effects =
-                        [ SpawnBullet bullet
-                        ]
-                in
-                    ( Just updatedModel, effects )
+                Update.returnAlive { model | timeSinceLastShot = 0 }
+                    |> Effects.add [ SpawnBullet (spawnBullet model) ]
 
         Die ->
-            let
-                segmentParticleEffect =
-                    SpawnSegmentParticles
+            Update.returnDead
+                |> Effects.add
+                    [ SpawnSegmentParticles
                         { velocity = model.velocity
                         , segments = wrappedSegments model
                         }
+                    ]
 
-                effects =
-                    [ segmentParticleEffect ]
-            in
-                ( Nothing, effects )
+
+spawnBullet : Model -> Effects Bullet.Model Bullet.Effect
+spawnBullet model =
+    Bullet.init
+        { position = front model
+        , velocity =
+            model.velocity
+                |> Vector.add (Vector.rotate model.rotation ( 0, 80 ))
+        , timeUntilDeath = 3.0 * Time.second
+        }
 
 
 

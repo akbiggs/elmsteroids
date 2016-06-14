@@ -5,6 +5,7 @@ module Component.AsteroidRandom exposing (asteroidGroup, asteroidGroupWithScaleA
 
 import Random exposing (Generator, andThen)
 import Random.Extra
+import Effects exposing (Effects)
 
 
 -- LOCAL IMPORTS
@@ -22,49 +23,49 @@ numAsteroids =
     Random.int 2 3
 
 
-asteroidGroup : Generator (List Asteroid.Model)
+asteroidGroup : Generator (Effects (List Asteroid.Model) Asteroid.Effect)
 asteroidGroup =
     numAsteroids
         `andThen` \n ->
-                    Random.list n asteroid
+                    Random.map Effects.batch (Random.list n asteroid)
 
 
-asteroidGroupWithScaleAt : Int -> Vector -> Generator (List Asteroid.Model)
+asteroidGroupWithScaleAt : Int -> Vector -> Generator (Effects (List Asteroid.Model) Asteroid.Effect)
 asteroidGroupWithScaleAt scale position =
     numAsteroids
         `andThen` \n ->
                     size scale scale
                         `andThen` \s ->
-                                    Random.list n (asteroidWithSizeAt s position)
+                                    Random.map Effects.batch (Random.list n (asteroidWithSizeAt s position))
 
 
-asteroid : Generator Asteroid.Model
+asteroid : Generator (Effects Asteroid.Model Asteroid.Effect)
 asteroid =
     size 4 5
         `andThen` asteroidWithSize
 
 
-asteroidWithSize : AsteroidSize -> Generator Asteroid.Model
+asteroidWithSize : AsteroidSize -> Generator (Effects Asteroid.Model Asteroid.Effect)
 asteroidWithSize (( scale, radius ) as size) =
     positionInSafeZone radius
         `andThen` asteroidWithSizeAt size
 
 
-asteroidWithSizeAt : AsteroidSize -> Vector -> Generator Asteroid.Model
+asteroidWithSizeAt : AsteroidSize -> Vector -> Generator (Effects Asteroid.Model Asteroid.Effect)
 asteroidWithSizeAt ( scale, radius ) position =
-    Random.map5
-        (\velDir rotation velMagnitude rotationVel points ->
-            { position = position
-            , velocity = Vector.rotate velDir ( 0, velMagnitude )
-            , rotation = rotation
-            , rotationVelocity = rotationVel
-            , scale = scale
-            , points = points
-            }
+    Random.map4
+        (\velocity rotation rotationVel points ->
+            Asteroid.init
+                { position = position
+                , velocity = velocity
+                , rotation = rotation
+                , rotationVelocity = rotationVel
+                , scale = scale
+                , points = points
+                }
         )
+        (velocity scale)
         angle
-        angle
-        (velocityMagnitude scale)
         rotationVelocity
         (asteroidPoints radius)
 
@@ -79,6 +80,16 @@ position =
             Random.float Bounds.bottom Bounds.top
     in
         Random.map2 Vector.init xGen yGen
+
+
+velocity : Int -> Generator Vector
+velocity scale =
+    Random.map2
+        (\velDir velMagnitude ->
+            Vector.rotate velDir ( 0, velMagnitude )
+        )
+        angle
+        (Random.float 60 (180 / toFloat (scale ^ 2)))
 
 
 positionInSafeZone : Float -> Generator Vector
@@ -99,11 +110,6 @@ positionInSafeZone objRadius =
 angle : Generator Float
 angle =
     Random.float 0 (pi * 2)
-
-
-velocityMagnitude : Int -> Generator Float
-velocityMagnitude objScale =
-    Random.float 60 (180 / toFloat (objScale ^ 2))
 
 
 rotationVelocity : Generator Float

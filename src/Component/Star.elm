@@ -1,10 +1,12 @@
-module Component.Star exposing (Model, Msg(..), Effect, update, draw)
+module Component.Star exposing (Model, Msg(..), Effect, init, update, draw)
 
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS
 
 import Color
 import Collage exposing (Form, group, rect, filled, move, alpha)
+import Effects exposing (Effects)
+import Game.Update as Update exposing (Update)
 
 
 -- LOCAL IMPORTS
@@ -23,6 +25,22 @@ type alias Model =
     }
 
 
+type alias InitArgs =
+    { position : Vector
+    , blinkPhase : Float
+    , blinkFrequency : Float
+    }
+
+
+init : InitArgs -> Effects Model Effect
+init { position, blinkPhase, blinkFrequency } =
+    Effects.return
+        { position = position
+        , blinkPhase = blinkPhase
+        , blinkFrequency = blinkFrequency
+        }
+
+
 
 -- </editor-fold> END MODEL
 -- <editor-fold> UPDATE
@@ -33,23 +51,14 @@ type Msg
 
 
 type alias Effect =
-    ()
+    Effects.None
 
 
-update : Msg -> Model -> ( Maybe Model, List Effect )
+update : Msg -> Update Model Effect
 update msg model =
     case msg of
         SecondsElapsed dt ->
-            let
-                blinkPhase =
-                    model.blinkPhase + model.blinkFrequency * dt
-
-                updatedModel =
-                    { model
-                        | blinkPhase = blinkPhase
-                    }
-            in
-                ( Just updatedModel, [] )
+            Update.returnAlive { model | blinkPhase = model.blinkPhase + model.blinkFrequency * dt }
 
 
 

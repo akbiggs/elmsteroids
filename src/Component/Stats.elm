@@ -4,6 +4,8 @@ module Component.Stats exposing (Model, Msg(..), Effect, init, update, draw)
 -- EXTERNAL IMPORTS
 
 import Collage exposing (Form, moveY)
+import Effects exposing (Effects)
+import Game.Update as Update exposing (Update)
 
 
 -- LOCAL IMPORTS
@@ -28,16 +30,13 @@ type alias InitArgs =
     }
 
 
-init : InitArgs -> ( Model, List Effect )
+init : InitArgs -> Effects Model Effect
 init { numLives } =
-    let
-        initializedModel =
-            { sector = 1
-            , score = 0
-            , numLives = numLives
-            }
-    in
-        ( initializedModel, [] )
+    Effects.return
+        { sector = 1
+        , score = 0
+        , numLives = numLives
+        }
 
 
 
@@ -53,23 +52,23 @@ type Msg
 
 
 type alias Effect =
-    ()
+    Effects.None
 
 
-update : Msg -> Model -> ( Maybe Model, List Effect )
+update : Msg -> Update Model Effect
 update msg model =
     case msg of
         NextSector ->
-            ( Just { model | sector = model.sector + 1 }, [] )
+            Update.returnAlive { model | sector = model.sector + 1 }
 
         IncreaseScore amount ->
-            ( Just { model | score = model.score + amount }, [] )
+            Update.returnAlive { model | score = model.score + amount }
 
         DecrementNumLives ->
-            ( Just { model | numLives = model.numLives - 1 }, [] )
+            Update.returnAlive { model | numLives = model.numLives - 1 }
 
         Hide ->
-            ( Nothing, [] )
+            Update.returnDead
 
 
 

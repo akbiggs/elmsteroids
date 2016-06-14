@@ -1,4 +1,4 @@
-module Component.Asteroid exposing (Model, AsteroidSize, Msg(..), Effect(..), update, draw, liesInside, wrappedSegments)
+module Component.Asteroid exposing (Model, AsteroidSize, Msg(..), Effect(..), init, update, draw, liesInside, wrappedSegments)
 
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS
@@ -7,6 +7,8 @@ import List exposing (map, concatMap, any)
 import Collage exposing (Form, group, polygon, filled, outlined, defaultLine)
 import Color exposing (..)
 import Time exposing (Time)
+import Game.Update as Update exposing (Update)
+import Effects exposing (Effects)
 
 
 -- LOCAL IMPORTS
@@ -37,6 +39,28 @@ type alias Model =
     , scale : Int
     , points : List Vector
     }
+
+
+type alias InitArgs =
+    { position : Vector
+    , velocity : Vector
+    , rotation : Float
+    , rotationVelocity : Float
+    , scale : Int
+    , points : List Vector
+    }
+
+
+init : InitArgs -> Effects Model Effect
+init { position, velocity, rotation, rotationVelocity, scale, points } =
+    Effects.return
+        { position = position
+        , velocity = velocity
+        , rotation = rotation
+        , rotationVelocity = rotationVelocity
+        , scale = scale
+        , points = points
+        }
 
 
 absolutePoints : Model -> List Vector
@@ -131,45 +155,30 @@ type Effect
     | IncreaseScore Int
 
 
-update : Msg -> Model -> ( Maybe Model, List Effect )
+update : Msg -> Update Model Effect
 update msg model =
     case msg of
         SecondsElapsed dt ->
-            let
-                updatedAsteroid =
-                    moveAsteroid dt model
-                        |> rotateAsteroid dt
-            in
-                ( Just updatedAsteroid, [] )
+            model
+                |> moveAsteroid dt
+                |> rotateAsteroid dt
+                |> Update.returnAlive
 
         BlowUp ->
-            let
-                spawnParticlesEffect =
-                    SpawnSegmentParticles
+            Update.returnDead
+                |> Effects.add
+                    [ SpawnSegmentParticles
                         { velocity = model.velocity
                         , segments = wrappedSegments model
                         }
-
-                spawnAsteroidsEffect =
-                    SpawnSplitAsteroids
+                    , IncreaseScore 100
+                    ]
+                |> Effects.addIf (model.scale > 1)
+                    [ SpawnSplitAsteroids
                         { position = model.position
                         , parentScale = model.scale
                         }
-
-                shouldSplit =
-                    model.scale > 1
-
-                effects =
-                    [ spawnParticlesEffect
-                    , IncreaseScore 100
                     ]
-                        ++ (if shouldSplit then
-                                [ spawnAsteroidsEffect ]
-                            else
-                                []
-                           )
-            in
-                ( Nothing, effects )
 
 
 moveAsteroid : Float -> Model -> Model

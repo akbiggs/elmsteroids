@@ -3,15 +3,18 @@ module Component.Bullet exposing (Model, Msg(..), Effect, init, update, draw)
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS
 
-import List exposing (..)
 import Collage exposing (Form, group, rect, filled, move, alpha)
 import Color exposing (..)
-import Vector exposing (..)
-import AnimationFrame
 import Time exposing (Time)
+import Game.Update as Update exposing (Update)
+import Effects exposing (Effects)
 
 
 -- LOCAL IMPORTS
+
+import Vector exposing (..)
+
+
 -- </editor-fold>
 -- <editor-fold> MODEL
 
@@ -23,12 +26,20 @@ type alias Model =
     }
 
 
-init : Vector -> Vector -> Float -> Model
-init pos vel timeUntilDeath =
-    { position = pos
-    , velocity = vel
-    , timeUntilDeath = timeUntilDeath
+type alias InitArgs =
+    { position : Vector
+    , velocity : Vector
+    , timeUntilDeath : Time
     }
+
+
+init : InitArgs -> Effects Model Effect
+init { position, velocity, timeUntilDeath } =
+    Effects.return
+        { position = position
+        , velocity = velocity
+        , timeUntilDeath = timeUntilDeath
+        }
 
 
 
@@ -42,35 +53,34 @@ type Msg
 
 
 type alias Effect =
-    ()
+    Effects.None
 
 
-update : Msg -> Model -> ( Maybe Model, List Effect )
-update msg bullet =
+update : Msg -> Update Model Effect
+update msg model =
     case msg of
         SecondsElapsed dt ->
-            let
-                updatedBullet =
-                    (moveBullet dt >> killBullet dt) bullet
-            in
-                ( updatedBullet, [] )
+            model
+                |> moveBullet dt
+                |> killBullet dt
+                |> Update.returnMaybe
 
         Explode ->
-            ( Nothing, [] )
+            Update.returnDead
 
 
 moveBullet : Time -> Model -> Model
-moveBullet timeDelta bullet =
+moveBullet dt bullet =
     { bullet
-        | position = add bullet.position (mulS timeDelta bullet.velocity) |> wrap
+        | position = add bullet.position (mulS dt bullet.velocity) |> wrap
     }
 
 
 killBullet : Time -> Model -> Maybe Model
-killBullet timeDelta bullet =
+killBullet dt bullet =
     let
         timeUntilDeath =
-            bullet.timeUntilDeath - timeDelta
+            bullet.timeUntilDeath - (dt * Time.second)
     in
         if timeUntilDeath > 0 then
             Just { bullet | timeUntilDeath = timeUntilDeath }
@@ -88,7 +98,7 @@ draw bullet =
     rect 2 2
         |> filled white
         |> move bullet.position
-        |> alpha (min bullet.timeUntilDeath 1)
+        |> alpha (min (Time.inSeconds bullet.timeUntilDeath) 1)
 
 
 

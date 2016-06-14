@@ -1,5 +1,8 @@
 module State.TitleState exposing (Model, Msg, Effect, init, update, view)
 
+import Game.Update exposing (Update)
+import Effects exposing (Effects)
+
 
 type alias Model =
     { dismissed : Bool
@@ -32,8 +35,8 @@ type Effect
     = StartGame
 
 
-update : Msg -> Model -> ( Model, List Effect )
+update : Msg -> Model -> Effects Model Effect
 update msg model =
     case msg of
         Dismiss ->
-            ( model, [ StartGame ] )
+            Effects.init model [ StartGame ]

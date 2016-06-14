@@ -4,6 +4,8 @@ module Collisions exposing (handleCollisions, Effect(..))
 -- EXTERNAL IMPORTS
 
 import List exposing (map, concat, concatMap, any)
+import Game.Update as Update exposing (Update)
+import Effects exposing (Effects)
 
 
 -- LOCAL IMPORTS
@@ -12,8 +14,6 @@ import Segment exposing (..)
 import Component.Player as Player
 import Component.Asteroid as Asteroid exposing (liesInside)
 import Component.Bullet as Bullet
-import Component.Update as Update
-import Tuple2
 
 
 -- </editor-fold> END IMPORTS
@@ -32,25 +32,19 @@ type Effect
     | BulletEffect Bullet.Effect
 
 
-handleCollisions : Objects -> ( Objects, List Effect )
+handleCollisions : Objects -> Effects Objects Effect
 handleCollisions objects =
     let
         ( updatedPlayer, playerEffects ) =
             Update.runOnMaybe (handlePlayerCollisions objects) objects.player
 
         ( updatedBullets, bulletEffects ) =
-            Update.runOnGroup (handleBulletCollisions objects) objects.bullets
-                |> Update.filterAliveObjects
+            List.map (handleBulletCollisions objects) objects.bullets
+                |> Update.filterAlive
 
         ( updatedAsteroids, asteroidEffects ) =
-            Update.runOnGroup (handleAsteroidCollisions objects) objects.asteroids
-                |> Tuple2.mapFst (List.filterMap identity)
-
-        updatedObjects =
-            { player = updatedPlayer
-            , asteroids = updatedAsteroids
-            , bullets = updatedBullets
-            }
+            List.map (handleAsteroidCollisions objects) objects.asteroids
+                |> Update.filterAlive
 
         effects =
             List.concat
@@ -59,31 +53,36 @@ handleCollisions objects =
                 , List.map BulletEffect bulletEffects
                 ]
     in
-        ( updatedObjects, effects )
+        Effects.init
+            { player = updatedPlayer
+            , asteroids = updatedAsteroids
+            , bullets = updatedBullets
+            }
+            effects
 
 
-handlePlayerCollisions : Objects -> Player.Model -> ( Maybe Player.Model, List Player.Effect )
+handlePlayerCollisions : Objects -> Update Player.Model Player.Effect
 handlePlayerCollisions { asteroids } player =
     if List.any (isPlayerCollidingWithAsteroid player) asteroids then
         Player.update Player.Die player
     else
-        ( Just player, [] )
+        Update.returnAlive player
 
 
-handleBulletCollisions : Objects -> Bullet.Model -> ( Maybe Bullet.Model, List Bullet.Effect )
+handleBulletCollisions : Objects -> Update Bullet.Model Bullet.Effect
 handleBulletCollisions { asteroids } bullet =
     if List.any (isBulletCollidingWithAsteroid bullet) asteroids then
         Bullet.update Bullet.Explode bullet
     else
-        ( Just bullet, [] )
+        Update.returnAlive bullet
 
 
-handleAsteroidCollisions : Objects -> Asteroid.Model -> ( Maybe Asteroid.Model, List Asteroid.Effect )
+handleAsteroidCollisions : Objects -> Update Asteroid.Model Asteroid.Effect
 handleAsteroidCollisions { bullets } asteroid =
     if List.any (\x -> isBulletCollidingWithAsteroid x asteroid) bullets then
         Asteroid.update Asteroid.BlowUp asteroid
     else
-        ( Just asteroid, [] )
+        Update.returnAlive asteroid
 
 
 isBulletCollidingWithAsteroid : Bullet.Model -> Asteroid.Model -> Bool

@@ -9,6 +9,8 @@
     "exposed-modules": [],
     "dependencies": {
         "Fresheyeball/elm-tuple-extra": "2.1.0 <= v < 3.0.0",
+        "akbiggs/elm-effects": "2.0.4 <= v < 3.0.0",
+        "akbiggs/elm-game-update": "1.0.1 <= v < 2.0.0",
         "elm-community/random-extra": "1.0.0 <= v < 2.0.0",
         "elm-lang/animation-frame": "1.0.0 <= v < 2.0.0",
         "elm-lang/core": "4.0.0 <= v < 5.0.0",
