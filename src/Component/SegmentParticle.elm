@@ -97,7 +97,7 @@ killParticle : Float -> Model -> Maybe Model
 killParticle dt particle =
     let
         timeUntilDeath =
-            particle.timeUntilDeath - (Time.inSeconds dt)
+            particle.timeUntilDeath - (dt * Time.second)
     in
         if timeUntilDeath > 0 then
             Just { particle | timeUntilDeath = timeUntilDeath }
