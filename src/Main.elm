@@ -54,9 +54,7 @@ main =
 
 type GameState
     = Title
-    | PreGame
     | Game
-    | PostGame
     | GameOver
 
 

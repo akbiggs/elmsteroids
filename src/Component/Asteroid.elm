@@ -1,6 +1,5 @@
 module Component.Asteroid exposing (Model, AsteroidSize, Msg(..), Effect(..), init, update, draw, liesInside, wrappedSegments)
 
--- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS
 
 import List exposing (map, concatMap, any)
@@ -19,16 +18,13 @@ import Triangle exposing (Triangle)
 import Wrap
 
 
--- </editor-fold> END IMPORTS
--- <editor-fold> MODEL
+-- MODEL
 
 
 type alias AsteroidSize =
-    ( Int
-      -- scale
-    , Float
-      -- radius
-    )
+    { scale : Int
+    , radius : Float
+    }
 
 
 type alias Model =
@@ -134,8 +130,7 @@ wrappedSegments model =
 
 
 
--- </editor-fold> END MODEL
--- <editor-fold> UPDATE
+-- UPDATE
 
 
 type Msg
@@ -196,8 +191,7 @@ rotateAsteroid dt asteroid =
 
 
 
--- </editor-fold> END UPDATE
--- <editor-fold> VIEW
+-- VIEW
 
 
 draw : Model -> Form
@@ -230,7 +224,3 @@ wrapPoints =
             (\bound -> any (\( _, y ) -> y > bound))
             (\bound -> any (\( _, y ) -> y < bound))
             move
-
-
-
--- </editor-fold> END VIEW

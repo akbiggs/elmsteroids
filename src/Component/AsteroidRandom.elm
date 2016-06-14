@@ -46,13 +46,13 @@ asteroid =
 
 
 asteroidWithSize : AsteroidSize -> Generator (Effects Asteroid.Model Asteroid.Effect)
-asteroidWithSize (( scale, radius ) as size) =
+asteroidWithSize ({ radius } as size) =
     positionInSafeZone radius
         `andThen` asteroidWithSizeAt size
 
 
 asteroidWithSizeAt : AsteroidSize -> Vector -> Generator (Effects Asteroid.Model Asteroid.Effect)
-asteroidWithSizeAt ( scale, radius ) position =
+asteroidWithSizeAt { scale, radius } position =
     Random.map4
         (\velocity rotation rotationVel points ->
             Asteroid.init
@@ -135,7 +135,13 @@ sizeWithScale scale =
         maxRadius =
             idealRadius * 1.05
     in
-        Random.map (\radius -> ( scale, radius )) (Random.float minRadius maxRadius)
+        Random.map
+            (\radius ->
+                { scale = scale
+                , radius = radius
+                }
+            )
+            (Random.float minRadius maxRadius)
 
 
 asteroidPoints : Float -> Generator (List Vector)
