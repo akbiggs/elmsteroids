@@ -28,6 +28,7 @@ import Component.StarRandom as StarRandom
 import Component.Stats as Stats
 import Component.Player as Player
 import Component.PlayerSpawnAnimation as PlayerSpawnAnimation
+import Component.TitleScreen as TitleScreen
 import State.Player as PlayerState
 import Bounds
 import Vector
@@ -63,12 +64,13 @@ type GameState
 type alias Model =
     { state : GameState
     , keyboard : Keyboard.Model
-    , stats : Maybe Stats.Model
     , bullets : List Bullet.Model
     , asteroids : List Asteroid.Model
     , segmentParticles : List SegmentParticle.Model
     , stars : List Star.Model
     , playerState : PlayerState.Model
+    , stats : Maybe Stats.Model
+    , titleScreen : Maybe TitleScreen.Model
     }
 
 
@@ -78,29 +80,29 @@ init =
         ( keyboard, keyboardCmd ) =
             Keyboard.init
 
+        ( titleScreen, titleScreenEffects ) =
+            TitleScreen.init
+
         ( playerState, playerStateEffects ) =
             PlayerState.init
-
-        ( stats, statsEffects ) =
-            Stats.init { numLives = 3 }
     in
         Effects.init
-            { state = Game
+            { state = Title
             , keyboard = keyboard
-            , stats = Just stats
+            , stats = Nothing
             , bullets = []
             , asteroids = []
             , segmentParticles = []
             , stars = []
             , playerState = playerState
+            , titleScreen = Just titleScreen
             }
             [ Random.generate SpawnAsteroids AsteroidRandom.asteroidGroup
             , Random.generate SpawnStars StarRandom.starGroup
             , Cmd.map KeyboardMsg keyboardCmd
             ]
-            `Effects.andThen` update NextLife
-            `Effects.andThen` Effects.handle handleStatsEffect statsEffects
             `Effects.andThen` Effects.handle handlePlayerStateEffect playerStateEffects
+            `Effects.andThen` Effects.handle handleTitleScreenEffect titleScreenEffects
 
 
 getPlayer : Model -> Maybe Player.Model
@@ -122,6 +124,7 @@ type Msg
     = Tick Time
     | KeyboardMsg Keyboard.Msg
     | PlaySound String
+    | StartGame
     | IncreaseScore Int
     | NextLife
     | SpawnAsteroids (Effects (List Asteroid.Model) Asteroid.Effect)
@@ -154,10 +157,21 @@ update msg model =
                     List.map (Star.update (Star.SecondsElapsed dtSeconds)) model.stars
                         |> Update.filterAlive
 
+                ( updatedTitleScreen, titleScreenEffects ) =
+                    Update.returnMaybe model.titleScreen
+                        `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.Enter model.keyboard)
+                                            (TitleScreen.update TitleScreen.Dismiss)
+                        `Update.andThen` TitleScreen.update (TitleScreen.SecondsElapsed dtSeconds)
+
                 ( updatedPlayerState, playerStateEffects ) =
-                    Effects.return model.playerState
-                        `Effects.andThen` PlayerState.update (PlayerState.HandleInput model.keyboard)
-                        `Effects.andThen` PlayerState.update (PlayerState.SecondsElapsed dtSeconds)
+                    case model.state of
+                        Game ->
+                            Effects.return model.playerState
+                                `Effects.andThen` PlayerState.update (PlayerState.HandleInput model.keyboard)
+                                `Effects.andThen` PlayerState.update (PlayerState.SecondsElapsed dtSeconds)
+
+                        _ ->
+                            Effects.return model.playerState
             in
                 Effects.return
                     { model
@@ -166,12 +180,14 @@ update msg model =
                         , playerState = updatedPlayerState
                         , segmentParticles = updatedSegmentParticles
                         , stars = updatedStars
+                        , titleScreen = updatedTitleScreen
                     }
                     `Effects.andThen` Effects.handle handlePlayerStateEffect playerStateEffects
                     `Effects.andThen` Effects.handle handleAsteroidEffect asteroidEffects
                     `Effects.andThen` Effects.handle handleBulletEffect bulletEffects
                     `Effects.andThen` Effects.handle handleSegmentParticleEffect segmentParticleEffects
                     `Effects.andThen` Effects.handle handleStarEffect starEffects
+                    `Effects.andThen` Effects.handle handleTitleScreenEffect titleScreenEffects
                     `Effects.andThen` handleCollisions
 
         KeyboardMsg keyMsg ->
@@ -185,6 +201,19 @@ update msg model =
         PlaySound filename ->
             -- TODO
             Effects.return model
+
+        StartGame ->
+            let
+                ( stats, statsEffects ) =
+                    Stats.init { numLives = 3 }
+            in
+                Effects.return
+                    { model
+                        | stats = Just stats
+                        , state = Game
+                    }
+                    `Effects.andThen` Effects.handle handleStatsEffect statsEffects
+                    `Effects.andThen` update NextLife
 
         IncreaseScore amount ->
             let
@@ -329,6 +358,16 @@ handleStatsEffect =
     Effects.ignoreUnused
 
 
+handleTitleScreenEffect : Effects.Handler TitleScreen.Effect Model (Cmd Msg)
+handleTitleScreenEffect effect model =
+    case effect of
+        TitleScreen.PlaySound filename ->
+            update (PlaySound filename) model
+
+        TitleScreen.StartGame ->
+            update StartGame model
+
+
 handleCollisionEffect : Effects.Handler Collisions.Effect Model (Cmd Msg)
 handleCollisionEffect effect model =
     case effect of
@@ -376,6 +415,7 @@ view model =
                 , List.map Bullet.draw model.bullets
                 , List.map SegmentParticle.draw model.segmentParticles
                 , [ DrawUtilities.drawMaybe Stats.draw model.stats ]
+                , [ DrawUtilities.drawMaybe TitleScreen.draw model.titleScreen ]
                 ]
     in
         Collage.collage (floor Bounds.width) (floor Bounds.height) scene

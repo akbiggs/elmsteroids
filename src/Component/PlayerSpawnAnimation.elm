@@ -12,6 +12,7 @@ import Collage exposing (Form)
 
 import Vector exposing (Vector)
 import Component.Ship as Ship
+import DrawUtilities
 
 
 -- MODEL
@@ -81,4 +82,4 @@ draw model =
             , rotation = ((1 - t) ^ 3) * 8
             }
             |> Collage.scale (1 + ((1 - t) ^ 2) * 2)
-            |> Collage.alpha (max 0.00001 t)
+            |> DrawUtilities.alpha' (max 0.00001 t)

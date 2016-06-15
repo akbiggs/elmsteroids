@@ -78,7 +78,14 @@ update msg model =
 
 draw : Model -> Form
 draw model =
-    defaultText 12 ("sector " ++ toString model.sector ++ " // score: " ++ toString model.score ++ " // " ++ livesText model.numLives)
+    DefaultText.draw 12
+        ("sector "
+            ++ toString model.sector
+            ++ " // score: "
+            ++ toString model.score
+            ++ " // "
+            ++ livesText model.numLives
+        )
         |> moveY (top - 10)
 
 

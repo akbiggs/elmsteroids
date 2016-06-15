@@ -1,19 +1,19 @@
-module DefaultText exposing (defaultText)
+module DefaultText exposing (draw)
 
-import Text exposing (fromString, style)
-import Color exposing (..)
-import Collage exposing (Form, text)
+import Text
+import Color
+import Collage exposing (Form)
 
 
-defaultText : Float -> String -> Form
-defaultText size =
-    fromString
-        >> style
+draw : Float -> String -> Form
+draw size =
+    Text.fromString
+        >> Text.style
             { typeface = [ "Courier New" ]
             , height = Just size
-            , color = white
+            , color = Color.white
             , bold = False
             , italic = False
             , line = Nothing
             }
-        >> text
+        >> Collage.text
