@@ -64,19 +64,26 @@ reloadTime =
     Time.second * 0.3
 
 
+toShip : Model -> Ship.Model
+toShip { position, rotation } =
+    { position = position
+    , rotation = rotation
+    }
+
+
 front : Model -> Vector
 front model =
-    Ship.front model.position model.rotation
+    Ship.front <| toShip model
 
 
 wrappedSegments : Model -> List Segment
 wrappedSegments model =
-    Ship.wrappedSegments model.position model.rotation
+    Ship.wrappedSegments <| toShip model
 
 
 wrappedTriangles : Model -> List Triangle
 wrappedTriangles model =
-    Ship.wrappedTriangles model.position model.rotation
+    Ship.wrappedTriangles <| toShip model
 
 
 
@@ -168,8 +175,8 @@ spawnBullet model =
 
 
 draw : Model -> Form
-draw player =
-    Ship.draw player.position player.rotation
+draw model =
+    Ship.draw <| toShip model
 
 
 

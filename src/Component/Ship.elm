@@ -1,6 +1,5 @@
-module Component.Ship exposing (front, triangle, draw, wrappedSegments, wrappedTriangles)
+module Component.Ship exposing (Model, front, triangle, draw, wrappedSegments, wrappedTriangles)
 
--- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS
 
 import List
@@ -15,53 +14,57 @@ import Triangle exposing (Triangle)
 import Segment exposing (Segment)
 
 
--- </editor-fold> END IMPORTS
--- <editor-fold> PROPERTIES
+-- PROPERTIES
 
 
-front : Vector -> Float -> Vector
-front position rotation =
-    Vector.add position (Vector.rotate rotation ( 0, 12 ))
-
-
-left : Vector -> Float -> Vector
-left position rotation =
-    Vector.add position (Vector.rotate rotation ( -6, -6 ))
-
-
-right : Vector -> Float -> Vector
-right position rotation =
-    Vector.add position (Vector.rotate rotation ( 6, -6 ))
-
-
-triangle : Vector -> Float -> Triangle
-triangle position rotation =
-    { a = front position rotation
-    , b = left position rotation
-    , c = right position rotation
+type alias Model =
+    { position : Vector
+    , rotation : Float
     }
 
 
-wrappedTriangles : Vector -> Float -> List Triangle
-wrappedTriangles position rotation =
-    triangle position rotation
+front : Model -> Vector
+front { position, rotation } =
+    Vector.add position (Vector.rotate rotation ( 0, 12 ))
+
+
+left : Model -> Vector
+left { position, rotation } =
+    Vector.add position (Vector.rotate rotation ( -6, -6 ))
+
+
+right : Model -> Vector
+right { position, rotation } =
+    Vector.add position (Vector.rotate rotation ( 6, -6 ))
+
+
+triangle : Model -> Triangle
+triangle model =
+    { a = front model
+    , b = left model
+    , c = right model
+    }
+
+
+wrappedTriangles : Model -> List Triangle
+wrappedTriangles model =
+    triangle model
         |> Triangle.wrap
 
 
-wrappedSegments : Vector -> Float -> List Segment
-wrappedSegments position rotation =
-    wrappedTriangles position rotation
+wrappedSegments : Model -> List Segment
+wrappedSegments model =
+    wrappedTriangles model
         |> List.concatMap Triangle.segments
 
 
 
--- </editor-fold> END PROPERTIES
--- <editor-fold> VIEW
+-- VIEW
 
 
-draw : Vector -> Float -> Form
-draw position rotation =
-    wrappedTriangles position rotation
+draw : Model -> Form
+draw model =
+    wrappedTriangles model
         |> List.map
             (\t ->
                 let
@@ -74,7 +77,3 @@ draw position rotation =
                         ]
             )
         |> group
-
-
-
--- </editor-fold> END VIEW

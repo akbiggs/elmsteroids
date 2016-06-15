@@ -23,10 +23,12 @@ import Component.Asteroid as Asteroid
 import Component.AsteroidRandom as AsteroidRandom
 import Component.SegmentParticle as SegmentParticle
 import Component.SegmentParticleRandom as SegmentParticleRandom
-import Component.Player as Player
 import Component.Star as Star
 import Component.StarRandom as StarRandom
 import Component.Stats as Stats
+import Component.Player as Player
+import Component.PlayerSpawnAnimation as PlayerSpawnAnimation
+import State.Player as PlayerState
 import Bounds
 import Vector
 import Collisions
@@ -66,7 +68,7 @@ type alias Model =
     , asteroids : List Asteroid.Model
     , segmentParticles : List SegmentParticle.Model
     , stars : List Star.Model
-    , player : Maybe Player.Model
+    , playerState : PlayerState.Model
     }
 
 
@@ -76,28 +78,39 @@ init =
         ( keyboard, keyboardCmd ) =
             Keyboard.init
 
-        ( player, playerEffects ) =
-            Player.init { position = Vector.zero }
+        ( playerState, playerStateEffects ) =
+            PlayerState.init
 
         ( stats, statsEffects ) =
             Stats.init { numLives = 3 }
     in
         Effects.init
-            { state = Title
+            { state = Game
             , keyboard = keyboard
             , stats = Just stats
             , bullets = []
             , asteroids = []
             , segmentParticles = []
             , stars = []
-            , player = Just player
+            , playerState = playerState
             }
             [ Random.generate SpawnAsteroids AsteroidRandom.asteroidGroup
             , Random.generate SpawnStars StarRandom.starGroup
             , Cmd.map KeyboardMsg keyboardCmd
             ]
-            `Effects.andThen` Effects.handle handlePlayerEffect playerEffects
+            `Effects.andThen` update NextLife
             `Effects.andThen` Effects.handle handleStatsEffect statsEffects
+            `Effects.andThen` Effects.handle handlePlayerStateEffect playerStateEffects
+
+
+getPlayer : Model -> Maybe Player.Model
+getPlayer model =
+    case model.playerState of
+        PlayerState.Alive player ->
+            Just player
+
+        _ ->
+            Nothing
 
 
 
@@ -110,6 +123,7 @@ type Msg
     | KeyboardMsg Keyboard.Msg
     | PlaySound String
     | IncreaseScore Int
+    | NextLife
     | SpawnAsteroids (Effects (List Asteroid.Model) Asteroid.Effect)
     | SpawnBullets (Effects (List Bullet.Model) Bullet.Effect)
     | SpawnSegmentParticles (Effects (List SegmentParticle.Model) SegmentParticle.Effect)
@@ -140,23 +154,20 @@ update msg model =
                     List.map (Star.update (Star.SecondsElapsed dtSeconds)) model.stars
                         |> Update.filterAlive
 
-                ( updatedPlayer, playerEffects ) =
-                    Update.runOnMaybe (Player.update (Player.SecondsElapsed dtSeconds)) model.player
-                        `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.ArrowUp model.keyboard) (Player.update Player.Accelerate)
-                        `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.ArrowDown model.keyboard) (Player.update Player.Decelerate)
-                        `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.ArrowLeft model.keyboard) (Player.update Player.RotateLeft)
-                        `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.ArrowRight model.keyboard) (Player.update Player.RotateRight)
-                        `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.Space model.keyboard) (Player.update Player.FireBullet)
+                ( updatedPlayerState, playerStateEffects ) =
+                    Effects.return model.playerState
+                        `Effects.andThen` PlayerState.update (PlayerState.HandleInput model.keyboard)
+                        `Effects.andThen` PlayerState.update (PlayerState.SecondsElapsed dtSeconds)
             in
                 Effects.return
                     { model
                         | bullets = updatedBullets
                         , asteroids = updatedAsteroids
-                        , player = updatedPlayer
+                        , playerState = updatedPlayerState
                         , segmentParticles = updatedSegmentParticles
                         , stars = updatedStars
                     }
-                    `Effects.andThen` Effects.handle handlePlayerEffect playerEffects
+                    `Effects.andThen` Effects.handle handlePlayerStateEffect playerStateEffects
                     `Effects.andThen` Effects.handle handleAsteroidEffect asteroidEffects
                     `Effects.andThen` Effects.handle handleBulletEffect bulletEffects
                     `Effects.andThen` Effects.handle handleSegmentParticleEffect segmentParticleEffects
@@ -183,6 +194,22 @@ update msg model =
                 Effects.return { model | stats = updatedStats }
                     `Effects.andThen` Effects.handle handleStatsEffect statsEffects
 
+        NextLife ->
+            let
+                ( updatedStats, statsEffects ) =
+                    Update.runOnMaybe (Stats.update Stats.DecrementNumLives) model.stats
+
+                -- TODO: GameOver
+                ( updatedPlayerState, playerStateEffects ) =
+                    PlayerState.update (PlayerState.RespawnPlayer Vector.zero) model.playerState
+            in
+                Effects.return
+                    { model
+                        | stats = updatedStats
+                        , playerState = updatedPlayerState
+                    }
+                    `Effects.andThen` Effects.handle handleStatsEffect statsEffects
+
         SpawnAsteroids ( asteroids, effects ) ->
             Effects.return { model | asteroids = model.asteroids ++ asteroids }
                 `Effects.andThen` Effects.handle handleAsteroidEffect effects
@@ -200,6 +227,46 @@ update msg model =
                 `Effects.andThen` Effects.handle handleStarEffect effects
 
 
+handleCollisions : Model -> Effects Model (Cmd Msg)
+handleCollisions model =
+    let
+        objects =
+            { player = getPlayer model
+            , bullets = model.bullets
+            , asteroids = model.asteroids
+            }
+
+        ( updatedObjects, collisionEffects ) =
+            Collisions.handleCollisions objects
+
+        ( updatedPlayerState, playerStateEffects ) =
+            PlayerState.update (PlayerState.UpdatePlayerStatus updatedObjects.player) model.playerState
+
+        updatedGame =
+            { model
+                | bullets = updatedObjects.bullets
+                , asteroids = updatedObjects.asteroids
+                , playerState = updatedPlayerState
+            }
+    in
+        Effects.return updatedGame
+            `Effects.andThen` Effects.handle handleCollisionEffect collisionEffects
+            `Effects.andThen` Effects.handle handlePlayerStateEffect playerStateEffects
+
+
+handlePlayerStateEffect : Effects.Handler PlayerState.Effect Model (Cmd Msg)
+handlePlayerStateEffect effect model =
+    case effect of
+        PlayerState.AliveEffect playerEffect ->
+            handlePlayerEffect playerEffect model
+
+        PlayerState.SpawningEffect playerSpawnAnimationEffect ->
+            handlePlayerSpawnAnimationEffect playerSpawnAnimationEffect model
+
+        PlayerState.DecrementNumLives ->
+            update NextLife model
+
+
 handlePlayerEffect : Effects.Handler Player.Effect Model (Cmd Msg)
 handlePlayerEffect effect model =
     case effect of
@@ -214,6 +281,13 @@ handlePlayerEffect effect model =
                 [ Random.generate SpawnSegmentParticles
                     <| SegmentParticleRandom.particles velocity segments
                 ]
+
+
+handlePlayerSpawnAnimationEffect : Effects.Handler PlayerSpawnAnimation.Effect Model (Cmd Msg)
+handlePlayerSpawnAnimationEffect effect model =
+    case effect of
+        PlayerSpawnAnimation.PlaySound filename ->
+            update (PlaySound filename) model
 
 
 handleAsteroidEffect : Effects.Handler Asteroid.Effect Model (Cmd Msg)
@@ -268,29 +342,6 @@ handleCollisionEffect effect model =
             handleBulletEffect bulletEffect model
 
 
-handleCollisions : Model -> Effects Model (Cmd Msg)
-handleCollisions model =
-    let
-        objects =
-            { player = model.player
-            , bullets = model.bullets
-            , asteroids = model.asteroids
-            }
-
-        ( updatedObjects, collisionEffects ) =
-            Collisions.handleCollisions objects
-
-        updatedGame =
-            { model
-                | player = updatedObjects.player
-                , bullets = updatedObjects.bullets
-                , asteroids = updatedObjects.asteroids
-            }
-    in
-        Effects.return updatedGame
-            `Effects.andThen` Effects.handle handleCollisionEffect collisionEffects
-
-
 
 -- </editor-fold>
 -- <editor-fold> SUBSCRIPTIONS
@@ -310,7 +361,7 @@ subscriptions game =
 
 
 view : Model -> Html Msg
-view game =
+view model =
     let
         background =
             Collage.rect Bounds.width Bounds.height
@@ -319,12 +370,12 @@ view game =
         scene =
             List.concat
                 [ [ background ]
-                , List.map Star.draw game.stars
-                , List.map Asteroid.draw game.asteroids
-                , [ DrawUtilities.drawMaybe Player.draw game.player ]
-                , List.map Bullet.draw game.bullets
-                , List.map SegmentParticle.draw game.segmentParticles
-                , [ DrawUtilities.drawMaybe Stats.draw game.stats ]
+                , List.map Star.draw model.stars
+                , List.map Asteroid.draw model.asteroids
+                , [ PlayerState.draw model.playerState ]
+                , List.map Bullet.draw model.bullets
+                , List.map SegmentParticle.draw model.segmentParticles
+                , [ DrawUtilities.drawMaybe Stats.draw model.stats ]
                 ]
     in
         Collage.collage (floor Bounds.width) (floor Bounds.height) scene
