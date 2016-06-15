@@ -91,15 +91,8 @@ aliveUpdate msg player =
                     Update.returnAlive player
 
         newState =
-            case maybePlayer of
-                Just player ->
-                    Alive player
-
-                Nothing ->
-                    Dead 0
-
-        -- Maybe.map Alive maybePlayer
-        --     |> Maybe.withDefault (Dead 0)
+            Maybe.map Alive maybePlayer
+                |> Maybe.withDefault (Dead 0)
     in
         Effects.init (Debug.log "state" newState) (List.map AliveEffect playerEffects)
 
