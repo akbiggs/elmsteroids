@@ -5,7 +5,6 @@ module Component.Stats exposing (Model, Msg(..), Effect, init, update, draw)
 
 import Collage exposing (Form, moveY)
 import Effects exposing (Effects)
-import Game.Update as Update exposing (Update)
 
 
 -- LOCAL IMPORTS
@@ -48,27 +47,23 @@ type Msg
     = NextSector
     | IncreaseScore Int
     | DecrementNumLives
-    | Hide
 
 
 type alias Effect =
     Effects.None
 
 
-update : Msg -> Update Model Effect
+update : Msg -> Model -> Effects Model Effect
 update msg model =
     case msg of
         NextSector ->
-            Update.returnAlive { model | sector = model.sector + 1 }
+            Effects.return { model | sector = model.sector + 1 }
 
         IncreaseScore amount ->
-            Update.returnAlive { model | score = model.score + amount }
+            Effects.return { model | score = model.score + amount }
 
         DecrementNumLives ->
-            Update.returnAlive { model | numLives = model.numLives - 1 }
-
-        Hide ->
-            Update.returnDead
+            Effects.return { model | numLives = model.numLives - 1 }
 
 
 

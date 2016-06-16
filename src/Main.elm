@@ -29,6 +29,7 @@ import Component.Stats as Stats
 import Component.Player as Player
 import Component.PlayerSpawnAnimation as PlayerSpawnAnimation
 import Component.TitleScreen as TitleScreen
+import Component.GameOverScreen as GameOverScreen
 import State.Player as PlayerState
 import Bounds
 import Vector
@@ -56,9 +57,9 @@ main =
 
 
 type GameState
-    = Title
-    | Game
-    | GameOver
+    = TitleState
+    | PlayingState
+    | GameOverState
 
 
 type alias Model =
@@ -69,8 +70,9 @@ type alias Model =
     , segmentParticles : List SegmentParticle.Model
     , stars : List Star.Model
     , playerState : PlayerState.Model
-    , stats : Maybe Stats.Model
+    , stats : Stats.Model
     , titleScreen : Maybe TitleScreen.Model
+    , gameOverScreen : Maybe GameOverScreen.Model
     }
 
 
@@ -83,19 +85,23 @@ init =
         ( titleScreen, titleScreenEffects ) =
             TitleScreen.init
 
+        ( stats, statsEffects ) =
+            Stats.init { numLives = 3 }
+
         ( playerState, playerStateEffects ) =
             PlayerState.init
     in
         Effects.init
-            { state = Title
+            { state = TitleState
             , keyboard = keyboard
-            , stats = Nothing
+            , stats = stats
             , bullets = []
             , asteroids = []
             , segmentParticles = []
             , stars = []
             , playerState = playerState
             , titleScreen = Just titleScreen
+            , gameOverScreen = Nothing
             }
             [ Random.generate SpawnAsteroids AsteroidRandom.asteroidGroup
             , Random.generate SpawnStars StarRandom.starGroup
@@ -115,6 +121,26 @@ getPlayer model =
             Nothing
 
 
+isGameOver : Model -> Bool
+isGameOver model =
+    case model.state of
+        GameOverState ->
+            True
+
+        _ ->
+            False
+
+
+isPlaying : Model -> Bool
+isPlaying model =
+    case model.state of
+        PlayingState ->
+            True
+
+        _ ->
+            False
+
+
 
 -- </editor-fold>
 -- <editor-fold> UPDATE
@@ -131,6 +157,8 @@ type Msg
     | SpawnBullets (Effects (List Bullet.Model) Bullet.Effect)
     | SpawnSegmentParticles (Effects (List SegmentParticle.Model) SegmentParticle.Effect)
     | SpawnStars (Effects (List Star.Model) Star.Effect)
+    | GameOver
+    | RestartGame
 
 
 update : Msg -> Model -> Effects Model (Cmd Msg)
@@ -163,9 +191,15 @@ update msg model =
                                             (TitleScreen.update TitleScreen.Dismiss)
                         `Update.andThen` TitleScreen.update (TitleScreen.SecondsElapsed dtSeconds)
 
+                ( updatedGameOverScreen, gameOverScreenEffects ) =
+                    Update.returnMaybe model.gameOverScreen
+                        `Update.andThen` Update.runIf (Keyboard.isPressed Keyboard.Enter model.keyboard)
+                                            (GameOverScreen.update GameOverScreen.Dismiss)
+                        `Update.andThen` GameOverScreen.update (GameOverScreen.SecondsElapsed dtSeconds)
+
                 ( updatedPlayerState, playerStateEffects ) =
                     case model.state of
-                        Game ->
+                        PlayingState ->
                             Effects.return model.playerState
                                 `Effects.andThen` PlayerState.update (PlayerState.HandleInput model.keyboard)
                                 `Effects.andThen` PlayerState.update (PlayerState.SecondsElapsed dtSeconds)
@@ -181,6 +215,7 @@ update msg model =
                         , segmentParticles = updatedSegmentParticles
                         , stars = updatedStars
                         , titleScreen = updatedTitleScreen
+                        , gameOverScreen = updatedGameOverScreen
                     }
                     `Effects.andThen` Effects.handle handlePlayerStateEffect playerStateEffects
                     `Effects.andThen` Effects.handle handleAsteroidEffect asteroidEffects
@@ -188,6 +223,7 @@ update msg model =
                     `Effects.andThen` Effects.handle handleSegmentParticleEffect segmentParticleEffects
                     `Effects.andThen` Effects.handle handleStarEffect starEffects
                     `Effects.andThen` Effects.handle handleTitleScreenEffect titleScreenEffects
+                    `Effects.andThen` Effects.handle handleGameOverScreenEffect gameOverScreenEffects
                     `Effects.andThen` handleCollisions
 
         KeyboardMsg keyMsg ->
@@ -203,41 +239,44 @@ update msg model =
             Effects.return model
 
         StartGame ->
-            let
-                ( stats, statsEffects ) =
-                    Stats.init { numLives = 3 }
-            in
-                Effects.return
-                    { model
-                        | stats = Just stats
-                        , state = Game
-                    }
-                    `Effects.andThen` Effects.handle handleStatsEffect statsEffects
-                    `Effects.andThen` update NextLife
+            Effects.return { model | state = PlayingState }
+                `Effects.andThen` update NextLife
 
         IncreaseScore amount ->
             let
                 ( updatedStats, statsEffects ) =
-                    Update.runOnMaybe (Stats.update (Stats.IncreaseScore amount)) model.stats
+                    Stats.update (Stats.IncreaseScore amount) model.stats
             in
                 Effects.return { model | stats = updatedStats }
                     `Effects.andThen` Effects.handle handleStatsEffect statsEffects
 
         NextLife ->
-            let
-                ( updatedStats, statsEffects ) =
-                    Update.runOnMaybe (Stats.update Stats.DecrementNumLives) model.stats
+            if (isPlaying model) then
+                let
+                    ( updatedStats, statsEffects ) =
+                        Stats.update Stats.DecrementNumLives model.stats
 
-                -- TODO: GameOver
-                ( updatedPlayerState, playerStateEffects ) =
-                    PlayerState.update (PlayerState.RespawnPlayer Vector.zero) model.playerState
-            in
-                Effects.return
-                    { model
-                        | stats = updatedStats
-                        , playerState = updatedPlayerState
-                    }
-                    `Effects.andThen` Effects.handle handleStatsEffect statsEffects
+                    isGameOver =
+                        updatedStats.numLives < 0
+
+                    ( updatedPlayerState, playerStateEffects ) =
+                        if isGameOver then
+                            Effects.return model.playerState
+                        else
+                            PlayerState.update (PlayerState.RespawnPlayer Vector.zero) model.playerState
+                in
+                    Effects.return
+                        { model
+                            | stats = updatedStats
+                            , playerState = updatedPlayerState
+                        }
+                        `Effects.andThen` Effects.handle handleStatsEffect statsEffects
+                        `Effects.andThen` if isGameOver then
+                                            update GameOver
+                                          else
+                                            Effects.return
+            else
+                Effects.return model
 
         SpawnAsteroids ( asteroids, effects ) ->
             Effects.return { model | asteroids = model.asteroids ++ asteroids }
@@ -254,6 +293,24 @@ update msg model =
         SpawnStars ( stars, effects ) ->
             Effects.return { model | stars = model.stars ++ stars }
                 `Effects.andThen` Effects.handle handleStarEffect effects
+
+        GameOver ->
+            let
+                ( gameOverScreen, gameOverScreenEffects ) =
+                    GameOverScreen.init
+                        { score = model.stats.score
+                        , sector = model.stats.sector
+                        }
+            in
+                Effects.return
+                    { model
+                        | state = GameOverState
+                        , gameOverScreen = Just gameOverScreen
+                    }
+                    `Effects.andThen` Effects.handle handleGameOverScreenEffect gameOverScreenEffects
+
+        RestartGame ->
+            init
 
 
 handleCollisions : Model -> Effects Model (Cmd Msg)
@@ -368,6 +425,13 @@ handleTitleScreenEffect effect model =
             update StartGame model
 
 
+handleGameOverScreenEffect : Effects.Handler GameOverScreen.Effect Model (Cmd Msg)
+handleGameOverScreenEffect effect model =
+    case effect of
+        GameOverScreen.RestartGame ->
+            update RestartGame model
+
+
 handleCollisionEffect : Effects.Handler Collisions.Effect Model (Cmd Msg)
 handleCollisionEffect effect model =
     case effect of
@@ -414,8 +478,9 @@ view model =
                 , [ PlayerState.draw model.playerState ]
                 , List.map Bullet.draw model.bullets
                 , List.map SegmentParticle.draw model.segmentParticles
-                , [ DrawUtilities.drawMaybe Stats.draw model.stats ]
+                , [ DrawUtilities.drawIf (isPlaying model) Stats.draw model.stats ]
                 , [ DrawUtilities.drawMaybe TitleScreen.draw model.titleScreen ]
+                , [ DrawUtilities.drawMaybe GameOverScreen.draw model.gameOverScreen ]
                 ]
     in
         Collage.collage (floor Bounds.width) (floor Bounds.height) scene

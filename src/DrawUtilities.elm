@@ -1,4 +1,4 @@
-module DrawUtilities exposing (drawMaybe, emptyForm, alpha')
+module DrawUtilities exposing (drawMaybe, drawIf, emptyForm, alpha')
 
 -- <editor-fold> IMPORTS
 -- EXTERNAL IMPORTS
@@ -15,6 +15,14 @@ drawMaybe : (a -> Form) -> Maybe a -> Form
 drawMaybe drawFn maybeObj =
     Maybe.map drawFn maybeObj
         |> Maybe.withDefault emptyForm
+
+
+drawIf : Bool -> (a -> Form) -> a -> Form
+drawIf cond drawFn obj =
+    if cond then
+        drawFn obj
+    else
+        emptyForm
 
 
 emptyForm : Form
