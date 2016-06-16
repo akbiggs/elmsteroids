@@ -16,6 +16,7 @@ import Component.Bullet as Bullet
 import Segment exposing (Segment)
 import Triangle exposing (Triangle)
 import Effects exposing (Effects)
+import DrawUtilities
 
 
 -- </editor-fold> END IMPORTS
@@ -63,7 +64,12 @@ rotationSpeed =
 
 reloadTime : Time
 reloadTime =
-    Time.second * 0.3
+    0.3 * Time.second
+
+
+invulnerableTime : Time
+invulnerableTime =
+    3.0 * Time.second
 
 
 canFireBullet : Model -> Bool
@@ -74,6 +80,11 @@ canFireBullet model =
 
         Nothing ->
             True
+
+
+isInvulnerable : Model -> Bool
+isInvulnerable model =
+    model.timeSinceSpawning <= invulnerableTime
 
 
 toShip : Model -> Ship.Model
@@ -138,8 +149,8 @@ update msg model =
                     , velocityDelta = 0
                     , rotation = model.rotation + model.rotationDelta * dt
                     , rotationDelta = 0
-                    , timeSinceLastShot =
-                        Maybe.map (\t -> t + (dt * Time.second)) model.timeSinceLastShot
+                    , timeSinceLastShot = Maybe.map (\t -> t + dt * Time.second) model.timeSinceLastShot
+                    , timeSinceSpawning = model.timeSinceSpawning + dt * Time.second
                 }
 
         Accelerate ->
@@ -156,19 +167,22 @@ update msg model =
 
         FireBullet ->
             if canFireBullet model then
-                Update.returnAlive model
-            else
                 Update.returnAlive { model | timeSinceLastShot = Just 0 }
                     |> Effects.add [ SpawnBullet (spawnBullet model) ]
+            else
+                Update.returnAlive model
 
         Die ->
-            Update.returnDead
-                |> Effects.add
-                    [ SpawnSegmentParticles
-                        { velocity = model.velocity
-                        , segments = wrappedSegments model
-                        }
-                    ]
+            if isInvulnerable model then
+                Update.returnAlive model
+            else
+                Update.returnDead
+                    |> Effects.add
+                        [ SpawnSegmentParticles
+                            { velocity = model.velocity
+                            , segments = wrappedSegments model
+                            }
+                        ]
 
 
 spawnBullet : Model -> Effects Bullet.Model Bullet.Effect
@@ -189,7 +203,18 @@ spawnBullet model =
 
 draw : Model -> Form
 draw model =
-    Ship.draw <| toShip model
+    model
+        |> toShip
+        |> Ship.draw
+        |> DrawUtilities.alpha' (currentAlpha model)
+
+
+currentAlpha : Model -> Float
+currentAlpha model =
+    if isInvulnerable model then
+        cos (model.timeSinceSpawning * 20) * 0.4 + 0.6
+    else
+        1
 
 
 
