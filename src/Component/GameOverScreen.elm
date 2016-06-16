@@ -76,26 +76,34 @@ update : Msg -> Update Model Effect
 update msg model =
     case msg of
         SecondsElapsed dt ->
-            case model.timeSinceDismissal of
-                Just time ->
-                    let
-                        newTimeSinceDismissal =
-                            time + dt * Time.second
-                    in
-                        if newTimeSinceDismissal >= fadeOutTime then
-                            Update.returnDead
-                                |> Effects.add [ RestartGame ]
-                        else
-                            Update.returnAlive
-                                { model
-                                    | timeSinceDismissal = Just newTimeSinceDismissal
-                                }
+            let
+                newTimeSinceShowing =
+                    model.timeSinceShowing + dt * Time.second
+            in
+                case model.timeSinceDismissal of
+                    Just time ->
+                        let
+                            newTimeSinceDismissal =
+                                time + dt * Time.second
+                        in
+                            if newTimeSinceDismissal >= fadeOutTime then
+                                Update.returnDead
+                                    |> Effects.add [ RestartGame ]
+                            else
+                                Update.returnAlive
+                                    { model
+                                        | timeSinceDismissal = Just newTimeSinceDismissal
+                                        , timeSinceShowing = newTimeSinceShowing
+                                    }
 
-                Nothing ->
-                    Update.returnAlive model
+                    Nothing ->
+                        Update.returnAlive
+                            { model
+                                | timeSinceShowing = newTimeSinceShowing
+                            }
 
         Dismiss ->
-            if isDismissed model then
+            if isDismissed model || model.timeSinceShowing < fadeInTime then
                 Update.returnAlive model
             else
                 Update.returnAlive { model | timeSinceDismissal = Just 0 }
@@ -134,7 +142,7 @@ draw model =
 
 currentTextAlpha : Model -> Float
 currentTextAlpha model =
-    max 1 (model.timeSinceShowing / fadeInTime)
+    min 1 (model.timeSinceShowing / fadeInTime)
 
 
 currentFadeBackgroundAlpha : Model -> Float
