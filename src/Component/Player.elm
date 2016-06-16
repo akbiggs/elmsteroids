@@ -28,7 +28,8 @@ type alias Model =
     , velocityDelta : Float
     , rotation : Float
     , rotationDelta : Float
-    , timeSinceLastShot : Time
+    , timeSinceLastShot : Maybe Time
+    , timeSinceSpawning : Time
     }
 
 
@@ -45,7 +46,8 @@ init { position } =
         , velocityDelta = 0
         , rotation = 0
         , rotationDelta = 0
-        , timeSinceLastShot = reloadTime
+        , timeSinceLastShot = Nothing
+        , timeSinceSpawning = 0
         }
 
 
@@ -62,6 +64,16 @@ rotationSpeed =
 reloadTime : Time
 reloadTime =
     Time.second * 0.3
+
+
+canFireBullet : Model -> Bool
+canFireBullet model =
+    case model.timeSinceLastShot of
+        Just time ->
+            time > reloadTime
+
+        Nothing ->
+            True
 
 
 toShip : Model -> Ship.Model
@@ -126,7 +138,8 @@ update msg model =
                     , velocityDelta = 0
                     , rotation = model.rotation + model.rotationDelta * dt
                     , rotationDelta = 0
-                    , timeSinceLastShot = model.timeSinceLastShot + (dt * Time.second)
+                    , timeSinceLastShot =
+                        Maybe.map (\t -> t + (dt * Time.second)) model.timeSinceLastShot
                 }
 
         Accelerate ->
@@ -142,10 +155,10 @@ update msg model =
             Update.returnAlive { model | rotationDelta = rotationSpeed }
 
         FireBullet ->
-            if model.timeSinceLastShot < reloadTime then
+            if canFireBullet model then
                 Update.returnAlive model
             else
-                Update.returnAlive { model | timeSinceLastShot = 0 }
+                Update.returnAlive { model | timeSinceLastShot = Just 0 }
                     |> Effects.add [ SpawnBullet (spawnBullet model) ]
 
         Die ->
