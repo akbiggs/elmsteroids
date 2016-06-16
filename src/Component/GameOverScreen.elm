@@ -79,28 +79,23 @@ update msg model =
             let
                 newTimeSinceShowing =
                     model.timeSinceShowing + dt * Time.second
-            in
-                case model.timeSinceDismissal of
-                    Just time ->
-                        let
-                            newTimeSinceDismissal =
-                                time + dt * Time.second
-                        in
-                            if newTimeSinceDismissal >= fadeOutTime then
-                                Update.returnDead
-                                    |> Effects.add [ RestartGame ]
-                            else
-                                Update.returnAlive
-                                    { model
-                                        | timeSinceDismissal = Just newTimeSinceDismissal
-                                        , timeSinceShowing = newTimeSinceShowing
-                                    }
 
-                    Nothing ->
-                        Update.returnAlive
-                            { model
-                                | timeSinceShowing = newTimeSinceShowing
-                            }
+                newTimeSinceDismissal =
+                    Maybe.map (\t -> t + dt * Time.second) model.timeSinceDismissal
+
+                isFinishedDismissing =
+                    Maybe.map (\t -> t >= fadeOutTime) newTimeSinceDismissal
+                        |> Maybe.withDefault False
+            in
+                if isFinishedDismissing then
+                    Update.returnDead
+                        |> Effects.add [ RestartGame ]
+                else
+                    Update.returnAlive
+                        { model
+                            | timeSinceShowing = newTimeSinceShowing
+                            , timeSinceDismissal = newTimeSinceDismissal
+                        }
 
         Dismiss ->
             if isDismissed model || model.timeSinceShowing < fadeInTime then
